@@ -1,0 +1,16 @@
+[
+  {
+    "studentId": "S001",
+    "semester": "2025A",
+    "amount": { "$numberDecimal": "5000000" },
+    "paidAmount": { "$numberDecimal": "0.00" },
+    "status": "UNPAID"
+  },
+  {
+    "studentId": "S002",
+    "semester": "2025A",
+    "amount": { "$numberDecimal": "7000000" },
+    "paidAmount": { "$numberDecimal": "2000000" },
+    "status": "PARTIAL"
+  }
+]

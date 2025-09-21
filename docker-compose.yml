@@ -1,0 +1,60 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  users:
+    build: ./user_service
+    env_file: ./user_service/.env
+    ports:
+      - "4001:4001"
+    depends_on:
+      - mongo
+
+  auth:
+    build: ./auth_service
+    env_file: ./auth_service/.env
+    ports:
+      - "4002:4002"
+    depends_on:
+      - mongo
+
+  transaction:
+    build: ./transaction_service
+    env_file: ./transaction_service/.env
+    ports:
+      - "4003:4003"
+    depends_on:
+      - mongo
+
+  student:
+    build: ./student_service
+    env_file: ./student_service/.env
+    ports:
+      - "4004:4004"
+    depends_on:
+      - mongo
+
+  tuition:
+    build: ./tuition_service
+    env_file: ./tuition_service/.env
+    ports:
+      - "4005:4005"
+    depends_on:
+      - mongo
+
+  otp:
+    build: ./otp_service
+    env_file: ./otp_service/.env
+    ports:
+      - "4006:4006"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
