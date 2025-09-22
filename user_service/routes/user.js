@@ -6,6 +6,15 @@ const authenticateToken = require('../middleware/authenticateToken')
 router.post('/register', userController.register)
 router.get('/profile', authenticateToken, userController.getProfile)
 //router.post('/balance', authenticateToken, userController.updateBalance)
+
+
+
+
+
+//services
 router.get('/:username', userController.getUserByUsername)
+router.get('/:userId', userController.getUserbyId)
+router.patch('/balance/:userId', userController.updateBalance)
 
 module.exports = router
+

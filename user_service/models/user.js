@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   balance: { type: mongoose.Decimal128, default: "0.00" }
 })
 
+userSchema.index({ username: 1 }, { unique: true });
 userSchema.methods.getBalance = function() {
   return parseFloat(this.balance.toString())
 }

@@ -7,6 +7,8 @@ router.post('/', tuitionController.createTuition)
 
 router.get('/:studentId', tuitionController.getStudentWithTuition)
 
+router.get('/:id',tuitionController.getTuitionById)
+
 router.delete('/:id', tuitionController.deleteTuition)
 
 module.exports = router

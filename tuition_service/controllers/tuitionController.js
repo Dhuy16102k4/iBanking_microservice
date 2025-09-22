@@ -43,6 +43,16 @@ class TuitionController {
       res.status(500).json({ message: err.message })
     }
   }
+
+  async getTuitionById(req, res) {
+    try {
+      const tuition = await Tuition.findById(req.params.id)
+      if (!tuition) return res.status(404).json({ message: 'Tuition not found' })
+      res.json(tuition)
+    } catch (err) {
+      res.status(500).json({ message: err.message })
+    }
+  }
 }
 
 module.exports = new TuitionController()
