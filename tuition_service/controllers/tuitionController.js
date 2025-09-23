@@ -16,23 +16,23 @@ class TuitionController {
 
   async getStudentWithTuition(req, res) {
     try {
-        const { studentId } = req.params;
-        const studentRes = await axios.get(`http://gateway:4000/student/${studentId}`);
-        const student = studentRes.data;
+      const { studentId } = req.params;
+      const studentRes = await axios.get(`http://gateway:4000/student/${studentId}`);
+      const student = studentRes.data;
 
-        if (!student) return res.status(404).json({ message: 'Student not found' });
-        
-        const tuitions = await Tuition.find({ studentId })
+      if (!student) return res.status(404).json({ message: 'Student not found' });
 
-      
-        res.json({ student, tuitions});
+      const tuitions = await Tuition.find({ studentId })
+
+
+      res.json({ student, tuitions });
 
     } catch (err) {
       res.status(500).json({ message: err.message })
     }
   }
 
-  
+
 
   async deleteTuition(req, res) {
     try {
@@ -49,6 +49,23 @@ class TuitionController {
       const tuition = await Tuition.findById(req.params.id)
       if (!tuition) return res.status(404).json({ message: 'Tuition not found' })
       res.json(tuition)
+    } catch (err) {
+      res.status(500).json({ message: err.message })
+    }
+  }
+
+  async updateTuition(req, res) {
+    try {
+      const { tuitionId } = req.params
+      const updateData = req.body
+      if (!updateData || typeof updateData !== 'object')  return res.status(400).json({ message: 'Invalid update data' })
+ 
+
+      const tuition = await Tuition.findByIdAndUpdate(tuitionId, { $set: updateData }, { new: true })
+      
+      if (!tuition) return res.status(404).json({ message: 'Tuition not found' })
+      res.json(tuition)
+
     } catch (err) {
       res.status(500).json({ message: err.message })
     }

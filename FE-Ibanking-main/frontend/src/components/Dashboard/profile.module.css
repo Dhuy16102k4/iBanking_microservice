@@ -1,0 +1,89 @@
+.profileContainer {
+  min-height: 100vh;
+  min-width: 80vh;
+  background: linear-gradient(135deg, #203a43, #2c5364);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.backBtn {
+  background: #f44336;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.backBtn:hover {
+  background: #f5372a;
+}
+
+.content {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.profileCard {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  max-width: 500px;
+  width: 100%;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.profileCard h2 {
+  margin-bottom: 20px;
+  font-size: 22px;
+  text-align: center;
+}
+
+.infoRow {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.infoRow span:first-child {
+  font-weight: 600;
+  color: #ffea00;
+}
+
+.infoRow span:last-child {
+  font-weight: 400;
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,311 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  animation: fadeIn 1.2s ease;
+}
+.togglePassword {
+  position: absolute;
+  right: 15px;
+  top: 0%;
+  margin-top: 3px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #ccc;
+  transition: color 0.3s;
+}
+
+.togglePassword:hover {
+  color: #00c6ff;
+}
+
+/* Container */
+.loginContainer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loginBox {
+  display: flex;
+  width: 1050px;
+  min-height: 600px;
+  border-radius: 20px;
+  overflow: hidden;
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  transform: translateY(30px);
+  opacity: 0;
+  animation: slideUp 1s ease forwards;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  justify-content: right;
+  margin-bottom: -150px;
+}
+
+.logo img {
+  width: 90px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+  transition: transform 0.3s ease;
+}
+
+.logo img:hover {
+  transform: scale(1.05);
+}
+
+/* Left side */
+.loginLeft {
+  flex: 1;
+  position: relative;
+}
+
+.loginLeft img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: top;
+  text-align: center;
+}
+
+/* Right side */
+.loginRight {
+  flex: 1;
+  padding: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #fff;
+}
+
+.loginRight h2 {
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Input group */
+.inputGroup {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.inputGroup i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #aaa;
+  transition: color 0.3s;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 14px 18px 14px 45px;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,0.3);
+  outline: none;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.inputGroup input::placeholder {
+  color: #ddd;
+}
+
+.inputGroup input:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #00c6ff;
+  box-shadow: 0 0 12px rgba(0, 198, 255, 0.4);
+}
+
+.inputGroup input:focus + i {
+  color: #00c6ff;
+}
+
+/* Button */
+.btnLogin {
+  width: 100%;
+  padding: 15px;
+  border-radius: 30px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(270deg, #6a11cb, #2575fc, #6a11cb);
+  background-size: 300% 300%;
+  cursor: pointer;
+  transition: 0.4s;
+  margin-bottom: 25px;
+  animation: gradientMove 5s infinite linear;
+}
+
+.btnLogin:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 20px rgba(37,117,252,0.5);
+}
+
+/* Animations */
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes slideUp {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 950px) {
+  .loginBox {
+    flex-direction: column;
+    width: 90%;
+    min-height: auto;
+  }
+  .loginLeft {
+    height: 250px;
+  }
+}
+/* Thêm vào cuối file login.module.css */
+
+/* Toggle Password */
+.togglePassword {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 18px;
+  color: #ccc;
+  user-select: none;
+}
+
+.togglePassword:hover {
+  color: #fff;
+}
+.successMsg {
+  margin-top: 15px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #155724;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.errorMsg {
+  margin-top: 15px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #721c24;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
+}
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 250px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  animation: slideIn 0.5s ease;
+}
+
+.success {
+  background: #28a745;
+}
+
+.error {
+  background: #dc3545;
+}
+
+.toastContent {
+  flex: 1;
+  margin-right: 10px;
+}
+
+/* Progress border */
+.progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  width: 100%;
+  transform: scaleX(1);
+  transform-origin: left;
+  animation: progressBar 5s linear forwards;
+}
+
+@keyframes progressBar {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

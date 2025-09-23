@@ -11,4 +11,7 @@ router.get('/:id',tuitionController.getTuitionById)
 
 router.delete('/:id', tuitionController.deleteTuition)
 
+
+router.patch('/:tuitionId', tuitionController.updateTuition)
+
 module.exports = router

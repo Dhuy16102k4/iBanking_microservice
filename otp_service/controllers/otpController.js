@@ -61,4 +61,4 @@ class OtpController {
     }
 }
 
-module.exports = OtpController;
+module.exports = new OtpController()

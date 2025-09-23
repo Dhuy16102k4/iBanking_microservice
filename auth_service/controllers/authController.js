@@ -20,8 +20,7 @@ class TokenController {
     try {
       const { username, password } = req.body
 
-      
-      // gọi sang User Service để lấy user
+
       const userRes = await axios.get(`http://gateway:4000/users/${username}`)
       const user = userRes.data
 
