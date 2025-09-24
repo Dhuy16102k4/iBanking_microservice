@@ -1,6 +1,6 @@
 
-const Otp = require('../services/otpService');
-const mongoose = require('mongoose');
+const Otp = require('../models/otp')
+const mongoose = require('mongoose')
 
 function generateOtp() {
     return Math.floor(100000 + Math.random() * 900000).toString();

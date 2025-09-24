@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   phone: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  balance: { type: mongoose.Decimal128, default: "0.00" }
+  balance: { type: mongoose.Decimal128, default: "10000.00" }
 })
 
 userSchema.index({ username: 1 }, { unique: true });

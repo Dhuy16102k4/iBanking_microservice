@@ -5,9 +5,13 @@ const authenticateToken = require('../middleware/authenticateToken')
 
 router.post('/', tuitionController.createTuition)
 
-router.get('/:studentId', tuitionController.getStudentWithTuition)
+// Lấy học phí theo studentId
+router.get('/student/:studentId', tuitionController.getStudentWithTuition)
 
-router.get('/:id',tuitionController.getTuitionById)
+// Lấy học phí theo tuition _id
+router.get('/id/:id', tuitionController.getTuitionById)
+
+
 
 router.delete('/:id', tuitionController.deleteTuition)
 

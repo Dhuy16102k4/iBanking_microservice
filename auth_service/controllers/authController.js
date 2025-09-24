@@ -21,7 +21,7 @@ class TokenController {
       const { username, password } = req.body
 
 
-      const userRes = await axios.get(`http://gateway:4000/users/${username}`)
+      const userRes = await axios.get(`http://gateway:4000/users/username/${username}`)
       const user = userRes.data
 
       if (!user) return res.status(400).json({ message: 'Invalid credentials' })

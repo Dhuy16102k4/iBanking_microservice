@@ -2,13 +2,19 @@
   {
     "studentId": "S001",
     "fullName": "Nguyen Van A",
-    "email": "nguyenvana@example.com",
-    "phone": "0123456789"
+    "email": "a@example.com",
+    "phone": "0901111111"
   },
   {
     "studentId": "S002",
     "fullName": "Tran Thi B",
-    "email": "tranthib@example.com",
-    "phone": "0987654321"
+    "email": "b@example.com",
+    "phone": "0902222222"
+  },
+  {
+    "studentId": "S003",
+    "fullName": "Le Van C",
+    "email": "c@example.com",
+    "phone": "0903333333"
   }
 ]

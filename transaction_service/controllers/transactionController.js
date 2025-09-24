@@ -3,34 +3,45 @@ const Transaction = require('../models/transaction');
 const axios = require('axios');
 
 async function getTuition(tuitionId) {
-  const res = await axios.get(`http://localhost:4000/tuition/${tuitionId}`);
-  return res.data;
+  try {
+    const res = await axios.get(`http://gateway:4000/tuition/id/${tuitionId}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error in getTuition:', err);
+    throw err;
+  }
 }
 
 async function updateTuition(tuitionId, updateData) {
-  await axios.patch(`http://localhost:4000/tuition/${tuitionId}`, updateData);
+  await axios.patch(`http://gateway:4000/tuition/${tuitionId}`, updateData);
 }
 
 async function getUserInfo(userId) {
-  const res = await axios.get(`http://localhost:4000/users/${userId}`);
-  return res.data;
+  try {
+    const res = await axios.get(`http://gateway:4000/users/id/${userId}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error in getUserInfo:', err);
+    throw err;
+  }
 }
 
 async function updateUserBalance(userId, newBalance) {
-  await axios.patch(`http://localhost:4000/users/${userId}/balance`, { newBalance });
+  await axios.patch(`http://gateway:4000/users/balance/${userId}`, { newBalance });
 }
 
 async function revertUserBalance(userId, originalBalance) {
-  await axios.patch(`http://localhost:4000/users/${userId}/balance`, { newBalance: originalBalance });
+  await axios.patch(`http://gateway:4000/users/balance/${userId}`, { newBalance: originalBalance });
 }
 
+
 async function createOTP(transactionId) {
-  const res = await axios.post(`http://localhost:4000/otp/create`, { transactionId });
-  return res.data.otpId;
+  const res = await axios.post(`http://gateway:4000/otp/create`, { transactionId });
+  return res.data;
 }
 
 async function verifyOTP(transactionId, code) {
-  const res = await axios.post(`http://localhost:4000/otp/verify`, { transactionId, code });
+  const res = await axios.post(`http://gateway:4000/otp/verify`, { transactionId, code });
   return res.data;
 }
 
@@ -60,29 +71,32 @@ class TransactionController {
   }
 
   async sendOTP(req, res) {
-    const { transactionId } = req.body;
-    const userId = req.user.id;
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const { transactionId } = req.body
+    const userId = req.user.id
+    const session = await mongoose.startSession()
+    session.startTransaction()
     try {
-      const transaction = await Transaction.findById(transactionId).session(session);
-      if (!transaction || transaction.customerId !== userId)
-        throw new Error('Transaction not found');
-      if (transaction.status !== 'INITIATED')
-        throw new Error('Invalid status for OTP');
+      const transaction = await Transaction.findById(transactionId).session(session)
+      if (!transaction || transaction.customerId.toString() !== userId) {
+        throw new Error('Transaction not found')
+      }
+      // resend
+      if (transaction.status !== 'INITIATED' && transaction.status !== 'OTP_SENT') {
+        throw new Error('Invalid status for OTP')
+      }
 
-      const otpId = await createOTP(transactionId);
-      transaction.status = 'OTP_SENT';
-      transaction.otpId = otpId;
-      await transaction.save({ session });
+      const otp = await createOTP(transactionId)
+      transaction.status = 'OTP_SENT'
+      transaction.otpId = otp.otpId
+      await transaction.save({ session })
 
       await session.commitTransaction();
-      res.json({ message: 'OTP sent', otpId });
+      res.json({ message: 'OTP sent', otpId: otp.otpId, transactionId ,status: transaction.status, otpCode: otp.code});
     } catch (err) {
-      await session.abortTransaction();
-      res.status(500).json({ message: err.message });
+      await session.abortTransaction()
+      res.status(400).json({ message: err.message })
     } finally {
-      session.endSession();
+      session.endSession()
     }
   }
 

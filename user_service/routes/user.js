@@ -12,8 +12,8 @@ router.get('/profile', authenticateToken, userController.getProfile)
 
 
 //services
-router.get('/:username', userController.getUserByUsername)
-router.get('/:userId', userController.getUserbyId)
+router.get('/id/:userId', userController.getUserbyId)        
+router.get('/username/:username', userController.getUserByUsername)
 router.patch('/balance/:userId', userController.updateBalance)
 
 module.exports = router

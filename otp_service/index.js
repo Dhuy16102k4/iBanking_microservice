@@ -1,6 +1,6 @@
 const express = require('express')
 const mongoose = require('mongoose')
-//const  transactionRoute = require('./routes/transaction')
+const  otpRoutes = require('./routes/otp')
 require('dotenv').config()
 
 const app = express()
@@ -11,6 +11,6 @@ mongoose.connect(process.env.DB_URI)
   .then(() => console.log('Otp Service DB connected'))
   .catch(err => console.error(err))
 
-//app.use('/transaction', authRoutes)
+app.use('/', otpRoutes)
 
 app.listen(4006, () => console.log('Otp Service running on port 4006'))

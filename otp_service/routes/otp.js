@@ -1,7 +1,7 @@
 const exprees  = require('express');
 const router = exprees.Router();
 const OtpController = require('../controllers/otpController');
-const authenticate = require('../middleware/authenticate');
+const authenticateToken = require('../middleware/authenticateToken');
 
 
 router.post('/create', OtpController.createOtp);

@@ -1,7 +1,7 @@
 
 const User = require('../models/user')
 const bcrypt = require('bcrypt')
-
+const mongoose = require('mongoose'); 
 class UserController {
   async register(req, res) {
     try {
@@ -28,7 +28,7 @@ class UserController {
       if (!user) return res.status(404).json({ message: 'User not found' })
 
       res.json({
-        // id: user._id,
+        id: user._id,
         username: user.username,
         fullName: user.fullName,
         phone: user.phone,
@@ -59,16 +59,24 @@ class UserController {
     }
   }
 
-  async getUserbyId(req, res) {
-    try {
-      const user = await User.findById(req.params.userId)
-      if (!user) return res.status(404).json({ message: 'User not found' })
-      res.json(user)
+async getUserbyId(req,res){
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
     }
-    catch (err) {
-      res.status(500).json({ message: err.message })
-    }
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({
+      username: user.username,
+      fullName: user.fullName,
+      phone: user.phone,
+      email: user.email,
+      balance: user.getBalance()
+    });
+  } catch(err){
+    res.status(500).json({ message: err.message });
   }
+}
   
   async updateBalance(req, res) {
     try {
