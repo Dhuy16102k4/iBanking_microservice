@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./profile.module.css";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
@@ -10,18 +11,32 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const res = await fetch("http://localhost:4001/profile", {
-          headers: { Authorization: `Bearer ${token}` },
+        if (!token) {
+          console.warn("⚠️ No token found, redirect to login");
+          navigate("/login");
+          return;
+        }
+
+        const res = await axios.get("http://localhost:4000/users/profile", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Failed to fetch profile");
-        setProfile(data);
+
+        setProfile(res.data);
       } catch (err) {
-        console.error("Profile fetch error:", err.message);
+        console.error("Profile fetch error:", err.response?.data || err.message);
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          // token hết hạn hoặc không hợp lệ → logout
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          navigate("/login");
+        }
       }
     };
+
     fetchProfile();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className={styles.profileContainer}>
@@ -49,7 +64,10 @@ const Profile = () => {
               <span>Phone:</span> <span>{profile.phone}</span>
             </div>
             <div className={styles.infoRow}>
-              <span>Balance:</span> <span>{profile.balance.toLocaleString("vi-VN")} VND</span>
+              <span>Balance:</span>{" "}
+              <span>
+                {profile.balance.toLocaleString("vi-VN")} VND
+              </span>
             </div>
           </div>
         ) : (

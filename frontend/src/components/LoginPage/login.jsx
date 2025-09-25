@@ -1,8 +1,10 @@
+// FE Login.jsx
 import React, { useState } from "react";
 import styles from "./login.module.css";
 import img from "../../assets/img.png";
 import logo from "../../assets/logo.png";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import axios from "axios"; // ✅ import axios
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -16,30 +18,29 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:4002/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+      // ✅ dùng axios.post thay fetch
+      const res = await axios.post("http://localhost:4000/auth/login", {
+        username,
+        password,
       });
 
-      const data = await res.json();
+      const data = res.data;
 
-      if (!res.ok) {
-        showToast(data.message || "❌ Login failed", "error");
-      } else {
-        // lưu token vào localStorage
-        localStorage.setItem("accessToken", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken);
+      // lưu token vào localStorage
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
 
-        showToast("✅ Login successful!", "success");
+      showToast("✅ Login successful!", "success");
 
-        // điều hướng sang dashboard
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 1500);
-      }
+      // điều hướng sang dashboard
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1500);
     } catch (err) {
-      showToast("❌ Error: " + err.message, "error");
+      // axios lỗi -> err.response.data có message BE trả về
+      const msg =
+        err.response?.data?.message || "❌ Error: " + err.message;
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
