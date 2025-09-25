@@ -1,0 +1,40 @@
+/* src/components/notification.module.css */
+.notification {
+  position: fixed;
+  top: 20px;        /* cách mép trên 20px */
+  right: 20px;      /* cách mép phải 20px */
+  padding: 14px 20px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  z-index: 9999;
+  min-width: 250px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  animation: slideIn 0.4s ease, fadeOut 0.5s ease 2.5s;
+}
+
+/* màu theo loại thông báo */
+.success {
+  background: rgba(46, 204, 113, 0.95); /* xanh lá */
+}
+
+.error {
+  background: rgba(231, 76, 60, 0.95); /* đỏ */
+}
+
+.warning {
+  background: rgba(241, 196, 15, 0.95); /* vàng */
+}
+
+/* Hiệu ứng xuất hiện trượt từ phải */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Hiệu ứng biến mất */
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(100%); }
+}

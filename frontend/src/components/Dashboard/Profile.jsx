@@ -40,7 +40,7 @@ const Profile = () => {
 
   return (
     <div className={styles.profileContainer}>
-      <header className={styles.header}>
+      <header className={styles.hh}>
         <h1>👤 Profile</h1>
         <button className={styles.backBtn} onClick={() => navigate("/dashboard")}>
           ⬅ Back

@@ -1,26 +1,94 @@
 @import "./dashboard.module.css";
 
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   overflow: hidden;
+  min-width: 700px;
 }
 
-.table th, .table td {
+.table th,
+.table td {
   padding: 12px 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   text-align: center;
+  white-space: nowrap;
 }
 
 .table th {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   font-weight: bold;
   color: #fff;
 }
 
 .table tr:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Badge status */
+.badge {
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.paid {
+  background: #2ecc71;
+  color: #fff;
+}
+.unpaid {
+  background: #e67e22;
+  color: #fff;
+}
+
+/* Pagination */
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.pagination button {
+  background: #2575fc;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.pagination button:disabled {
+  background: gray;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-weight: bold;
+  color: #fff;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  .pagination {
+    flex-direction: column;
+    gap: 8px;
+  }
 }

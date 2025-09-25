@@ -1,94 +1,107 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./payment.module.css";
+import axios from "axios";
+import Notification from "./Notification";
 
 const Payment = () => {
   const [studentId, setStudentId] = useState("");
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [transactionId, setTransactionId] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [selectedTuitionId, setSelectedTuitionId] = useState(null);
+  const [notification, setNotification] = useState({ message: "", type: "" });
 
   const navigate = useNavigate();
   const token = localStorage.getItem("accessToken");
 
+  const showNotification = (message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: "", type: "" }), 3000); // ⏳ auto hide
+  };
+
   const formatMoney = (num) =>
     Number(num).toLocaleString("vi-VN", { minimumFractionDigits: 0 });
 
-  // Tra cứu học phí
+  // 🔎 Tra cứu học phí
   const handleFetchTuition = async () => {
     if (!studentId) return;
     setLoading(true);
     try {
       const normalizedId = studentId.toUpperCase();
-      const res = await fetch(`http://localhost:4005/${normalizedId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      const { data } = await axios.get(
+        `http://localhost:4000/tuition/student/${normalizedId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setTuitionInfo(data);
+      showNotification("✅ Tra cứu học phí thành công", "success");
     } catch (err) {
-      alert("❌ " + err.message);
+      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Gửi OTP
-  const handleSendOTP = async (tuitionId) => {
+  // 🏦 B1: Tạo transaction
+  const handleCreateTransaction = async (tuitionId) => {
     try {
-      if (!tuitionInfo?.student?.email) {
-        return alert("❌ Không tìm thấy email của sinh viên");
-      }
-      const res = await fetch("http://localhost:4006/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          studentId: studentId.toUpperCase(),
-          email: tuitionInfo.student.email,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setOtpSent(true);
-      setSelectedTuitionId(tuitionId);
-      alert("✅ OTP đã được gửi đến email: " + tuitionInfo.student.email);
+      const { data } = await axios.post(
+        "http://localhost:4000/transaction/create",
+        { tuitionId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setTransactionId(data.transactionId);
+      showNotification("✅ Giao dịch đã được khởi tạo", "success");
     } catch (err) {
-      alert("❌ " + err.message);
+      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
     }
   };
 
-  // Xác nhận OTP + Thanh toán
-  const handleConfirmPayment = async () => {
-  try {
-    const res = await fetch("http://localhost:4003/pay", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        studentId: studentId.toUpperCase(),
-        tuitionId: tuitionInfo.tuitions[0]._id, // 👈 gửi kèm tuitionId
-        otp: otpCode,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-    alert("🎉 Thanh toán thành công!");
-  } catch (err) {
-    alert("❌ " + err.message);
-  }
-};
+  // ✉️ B2: Gửi OTP
+  const handleSendOTP = async () => {
+    if (!transactionId) return showNotification("⚠️ Bạn cần tạo giao dịch trước", "warning");
+    try {
+      const { data } = await axios.post(
+        "http://localhost:4000/transaction/send",
+        { transactionId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setOtpSent(true);
+      showNotification("✅ " + data.message, "success");
+    } catch (err) {
+      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+    }
+  };
 
+  // 🔐 B3: Xác thực OTP + Thanh toán
+  const handleConfirmPayment = async () => {
+    if (!transactionId) return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
+    try {
+      const { data } = await axios.post(
+        "http://localhost:4000/transaction/verify",
+        { transactionId, code: otpCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showNotification("🎉 " + data.message, "success");
+      navigate("/transactions");
+    } catch (err) {
+      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+    }
+  };
 
   return (
     <div className={styles.paymentContainer}>
-      <header className={styles.header}>
+      {/* ✅ Popup */}
+      {notification.message && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification({ message: "", type: "" })}
+        />
+      )}
+
+      <header className={styles.dd}>
         <h1>💳 Tuition Payment</h1>
         <button onClick={() => navigate("/dashboard")} className={styles.backBtn}>
           ⬅ Back
@@ -108,51 +121,89 @@ const Payment = () => {
         </button>
       </div>
 
-      {tuitionInfo && tuitionInfo.student && (
+      {tuitionInfo?.student && (
         <div className={styles.tuitionBox}>
           <h3>Thông tin sinh viên</h3>
-          <p><b>Tên:</b> {tuitionInfo.student.fullName}</p>
-          <p><b>Email:</b> {tuitionInfo.student.email}</p>
-          <p><b>Phone:</b> {tuitionInfo.student.phone}</p>
+          <table className={styles.studentTable}>
+            <tbody>
+              <tr>
+                <th>Tên</th>
+                <td>{tuitionInfo.student.fullName}</td>
+              </tr>
+              <tr>
+                <th>Email</th>
+                <td>{tuitionInfo.student.email}</td>
+              </tr>
+              <tr>
+                <th>Phone</th>
+                <td>{tuitionInfo.student.phone}</td>
+              </tr>
+            </tbody>
+          </table>
 
           <h3>Học phí</h3>
-          {tuitionInfo.tuitions.map((t) => (
-            <div key={t._id} className={styles.tuitionItem}>
-              <p><b>Semester:</b> {t.semester}</p>
-              <p><b>Amount:</b> {formatMoney(t.amount)} VND</p>
-              <p><b>Paid:</b> {formatMoney(t.paidAmount)} VND</p>
-              <p><b>Remaining:</b> {formatMoney(t.remaining)} VND</p>
-              <p><b>Status:</b> {t.status}</p>
-
-              {!otpSent ? (
-                <button
-                  onClick={() => handleSendOTP(t._id)}
-                  className={styles.payBtn}
-                >
-                  Gửi OTP để thanh toán
-                </button>
-              ) : (
-                selectedTuitionId === t._id && (
-                  <div className={styles.formGroup}>
-                    <label>Nhập OTP</label>
-                    <input
-                      type="text"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="OTP"
-                    />
-                    <button
-                      onClick={handleConfirmPayment}
-                      disabled={!otpCode}
-                      className={styles.confirmBtn}
+          <table className={styles.tuitionTable}>
+            <thead>
+              <tr>
+                <th>Semester</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tuitionInfo.tuitions.map((t) => (
+                <tr key={t._id}>
+                  <td>{t.semester}</td>
+                  <td>{formatMoney(t.amount)} VND</td>
+                  <td>
+                    <span
+                      style={{
+                        color: t.status === "PAID" ? "lightgreen" : "orange",
+                        fontWeight: "600",
+                      }}
                     >
-                      Xác nhận thanh toán
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          ))}
+                      {t.status}
+                    </span>
+                  </td>
+                  <td>
+                    {t.status === "PAID" ? (
+                      <span style={{ color: "lightgreen", fontWeight: "600" }}>
+                        ✅ Đã thanh toán
+                      </span>
+                    ) : !transactionId ? (
+                      <button
+                        onClick={() => handleCreateTransaction(t._id)}
+                        className={styles.payBtn}
+                      >
+                        Tạo giao dịch
+                      </button>
+                    ) : !otpSent ? (
+                      <button onClick={handleSendOTP} className={styles.payBtn}>
+                        Gửi OTP
+                      </button>
+                    ) : (
+                      <div className={styles.otpBox}>
+                        <input
+                          type="text"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          placeholder="Nhập OTP"
+                        />
+                        <button
+                          onClick={handleConfirmPayment}
+                          disabled={!otpCode}
+                          className={styles.confirmBtn}
+                        >
+                          Xác nhận
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

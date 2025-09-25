@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const navigate = useNavigate();
 
   const token = localStorage.getItem("accessToken");
@@ -12,12 +14,40 @@ const Transactions = () => {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const res = await fetch("http://localhost:4003/transactions", {
+        const res = await fetch("http://localhost:4000/transaction", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Failed to fetch");
-        setTransactions(data);
+        let data = await res.json();
+        if (!res.ok)
+          throw new Error(data.message || "Failed to fetch transactions");
+
+        // 🔄 Sắp xếp mới nhất lên trước
+        data = data.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        // ✅ enrich thêm MSSV + Amount + Semester từ tuition service
+        const enriched = await Promise.all(
+          data.map(async (tx) => {
+            try {
+              const tuitionRes = await fetch(
+                `http://localhost:4000/tuition/id/${tx.tuitionId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              const tuition = await tuitionRes.json();
+              return {
+                ...tx,
+                mssv: tuition?.studentId || "N/A",
+                amount: tuition?.amount || 0,
+                semester: tuition?.semester || "N/A",
+              };
+            } catch {
+              return { ...tx, mssv: "N/A", amount: 0, semester: "N/A" };
+            }
+          })
+        );
+
+        setTransactions(enriched);
       } catch (err) {
         alert("❌ " + err.message);
       } finally {
@@ -28,12 +58,21 @@ const Transactions = () => {
     fetchTransactions();
   }, [token]);
 
+  // 📌 Phân trang
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentTransactions = transactions.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+
   return (
     <div className={styles.dashboardContainer}>
       {/* Header */}
       <header className={styles.header}>
         <h1>📄 Transactions</h1>
-        <button onClick={() => navigate("/dashboard")} className={styles.logoutBtn}>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className={styles.logoutBtn}
+        >
           ⬅ Back
         </button>
       </header>
@@ -45,30 +84,69 @@ const Transactions = () => {
         ) : transactions.length === 0 ? (
           <p>😢 Chưa có giao dịch nào</p>
         ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Transaction ID</th>
-                <th>Student ID</th>
-                <th>Tuition ID</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((tx) => (
-                <tr key={tx._id}>
-                  <td>{tx._id}</td>
-                  <td>{tx.studentId}</td>
-                  <td>{tx.tuitionId}</td>
-                  <td>{Number(tx.amount).toLocaleString("vi-VN")} VND</td>
-                  <td>{tx.status}</td>
-                  <td>{new Date(tx.createdAt).toLocaleString("vi-VN")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>MSSV</th>
+                    <th>Semester</th>
+                    <th>Amount (VND)</th>
+                    <th>Status</th>
+                    <th>Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentTransactions.map((tx, index) => (
+                    <tr key={tx._id}>
+                      <td>{indexOfFirst + index + 1}</td>
+                      <td>{tx.mssv}</td>
+                      <td>{tx.semester}</td>
+                      <td>
+                        {tx.amount
+                          ? Number(tx.amount).toLocaleString("vi-VN")
+                          : "N/A"}
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            tx.status === "SUCCESS"
+                              ? "lightgreen"
+                              : tx.status === "FAILED"
+                              ? "red"
+                              : "orange",
+                          fontWeight: "600",
+                        }}
+                      >
+                        {tx.status}
+                      </td>
+                      <td>{new Date(tx.createdAt).toLocaleString("vi-VN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className={styles.pagination}>
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                ⬅ Prev
+              </button>
+              <span>
+                Page {currentPage} / {totalPages}
+              </span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next ➡
+              </button>
+            </div>
+          </>
         )}
       </main>
     </div>

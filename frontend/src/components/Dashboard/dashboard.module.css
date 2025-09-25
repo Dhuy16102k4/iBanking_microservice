@@ -1,75 +1,187 @@
 .dashboardContainer {
   min-height: 100vh;
-  min-width: 80vh;
   background: linear-gradient(135deg, #203a43, #2c5364);
   color: #fff;
   display: flex;
   flex-direction: column;
+  font-family: "Poppins", sans-serif;
 }
 
+/* Header */
 .header {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.35);
   padding: 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap; /* ✅ cho mobile, tránh tràn dòng */
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 24px;
+.greeting {
+  font-size: 15px;
+  font-weight: 500;
+  color: #ffd369;
+  margin-left: 20px;
 }
 
 .logoutBtn {
   background: #f44336;
   border: none;
   padding: 10px 20px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 600;
-  color: #fff;
   cursor: pointer;
   transition: 0.3s;
-  margin-left: 20px;
+  margin-left: 15px;
 }
-
 .logoutBtn:hover {
   background: #d32f2f;
+  transform: scale(1.05);
 }
 
+/* Content */
 .content {
   flex: 1;
   padding: 40px;
+}
+
+.hero {
   text-align: center;
+  margin-bottom: 30px;
+}
+.hero h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+.hero p {
+  font-size: 16px;
+  opacity: 0.85;
 }
 
-.tokenBox {
+.semesterBox {
+  text-align: center;
+  padding: 20px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  margin-bottom: 40px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+.notice {
   display: block;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 10px;
-  margin: 20px auto;
-  border-radius: 6px;
+  margin-top: 10px;
   font-size: 14px;
-  word-break: break-all;
+  color: #ffd369;
 }
 
-.actions {
-  margin-top: 30px;
+/* Cards */
+.cards {
   display: flex;
-  gap: 20px;
+  gap: 25px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
-.actions button {
-  background: #2575fc;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: 600;
+.card {
+  background: rgba(255,255,255,0.15);
+  padding: 25px;
+  border-radius: 16px;
+  text-align: center;
+  width: 260px;
   cursor: pointer;
   transition: 0.3s;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+.card:hover {
+  transform: translateY(-5px) scale(1.02);
+  background: rgba(255,255,255,0.25);
 }
 
-.actions button:hover {
-  background: #1a5ed9;
+.icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 15px;
+}
+.card h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+}
+.card p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* ====================== */
+/* 📱 Responsive Section */
+/* ====================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .content {
+    padding: 25px;
+  }
+  .hero h2 {
+    font-size: 24px;
+  }
+  .card {
+    width: 220px;
+    padding: 20px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .greeting {
+    margin-left: 0;
+    font-size: 14px;
+  }
+
+  .logoutBtn {
+    padding: 8px 16px;
+    margin-left: 0;
+  }
+
+  .content {
+    padding: 20px;
+  }
+
+  .hero h2 {
+    font-size: 22px;
+  }
+  .hero p {
+    font-size: 14px;
+  }
+
+  .semesterBox {
+    font-size: 14px;
+    padding: 15px;
+  }
+
+  .cards {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+  .card {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+/* Very Small Mobile */
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 18px;
+  }
+  .greeting {
+    font-size: 13px;
+  }
+  .hero h2 {
+    font-size: 20px;
+  }
 }

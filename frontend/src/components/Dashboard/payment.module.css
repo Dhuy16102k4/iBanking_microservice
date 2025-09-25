@@ -1,19 +1,22 @@
 .paymentContainer {
   min-height: 100vh;
-  min-width: 80vh;  
+  min-width: 80vh;
   background: linear-gradient(135deg, #203a43, #2c5364);
   color: #fff;
-  padding: 20px 40px;
+
 }
 
+/* Header */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: rgba(0, 0, 0, 0.4);
   padding: 15px 25px;
-  border-radius: 8px;
   margin-bottom: 20px;
+  border-radius: 8px;
+  flex-wrap: wrap; /* ✅ cho mobile */
+  gap: 10px;
 }
 
 .header h1 {
@@ -21,6 +24,7 @@
   font-size: 22px;
 }
 
+/* Nút back */
 .backBtn {
   background: #f44336;
   border: none;
@@ -35,20 +39,20 @@
   background: #d32f2f;
 }
 
+/* Form */
 .formGroup {
   margin: 15px 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 20px 40px;
 }
-
 .formGroup input {
   padding: 12px;
   border-radius: 6px;
   border: none;
   font-size: 16px;
 }
-
 .formGroup button {
   background: #2575fc;
   color: white;
@@ -59,38 +63,141 @@
   font-weight: 600;
   transition: 0.3s;
 }
-
 .formGroup button:hover {
   background: #1a5ed9;
 }
 
+/* Box chứa học phí */
 .tuitionBox {
   margin-top: 20px;
   padding: 20px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
+  overflow-x: auto; /* ✅ tránh tràn bảng */
 }
 
-.tuitionItem {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 12px;
-  margin: 10px 0;
-  border-radius: 6px;
-}
-
-.centerBtn {
-  display: flex;
-  justify-content: center;
-}
-
-.payBtn {
-  margin-top: 20px;
-  background: #28a745 !important;
-  padding: 12px 20px;
-}
-
-.confirmBtn {
+/* Bảng sinh viên */
+.studentTable,
+.tuitionTable {
+  width: 100%;
+  border-collapse: collapse;
   margin-top: 15px;
-  background: #ff9800 !important;
-  padding: 12px 20px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.studentTable th,
+.studentTable td,
+.tuitionTable th,
+.tuitionTable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.studentTable th,
+.tuitionTable th {
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffd700;
+  font-weight: 600;
+}
+.studentTable td,
+.tuitionTable td {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+/* Nút hành động */
+.payBtn {
+  background: #28a745;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #fff;
+  transition: 0.3s;
+}
+.payBtn:hover {
+  background: #218838;
+}
+.confirmBtn {
+  background: #ff9800;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #fff;
+  transition: 0.3s;
+}
+.confirmBtn:hover {
+  background: #e68900;
+}
+
+/* Ô nhập OTP */
+.otpBox {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap; /* ✅ để ô nhập và nút xuống dòng khi hẹp */
+}
+.otpBox input {
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  width: 120px;
+}
+
+/* ================= Responsive ================= */
+@media (max-width: 1024px) {
+  .paymentContainer {
+    min-width: auto;
+  }
+  .formGroup {
+    padding: 15px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .formGroup input,
+  .formGroup button {
+    font-size: 14px;
+    padding: 10px;
+  }
+  .studentTable th,
+  .studentTable td,
+  .tuitionTable th,
+  .tuitionTable td {
+    font-size: 14px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 18px;
+  }
+  .formGroup {
+    padding: 10px;
+  }
+  .formGroup input,
+  .formGroup button {
+    font-size: 13px;
+    padding: 8px;
+  }
+  .otpBox input {
+    width: 100%;
+  }
+}
+.dd{
+  background: rgba(0, 0, 0, 0.35);
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* ✅ cho mobile, tránh tràn dòng */
 }
