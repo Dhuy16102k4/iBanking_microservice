@@ -4,9 +4,9 @@ services:
   mongo:
     image: mongo:6
     container_name: mongo
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
-    
     volumes:
       - mongo_data:/data/db
 
@@ -57,6 +57,7 @@ services:
       - "4006:4006"
     depends_on:
       - mongo
+
   gateway:
     build: ./gate_way
     ports:

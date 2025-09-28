@@ -6,7 +6,11 @@ const axios = require('axios')
 class TuitionController {
   async createTuition(req, res) {
     try {
-      const tuition = new Tuition(req.body)
+      const { deadline, ...rest } = req.body
+      const tuition = new Tuition({
+        ...rest,
+        deadline: deadline ? new Date(deadline) : new Date(Date.now() + 30*24*60*60*1000) 
+      })
       await tuition.save()
       res.status(201).json(tuition)
     } catch (err) {

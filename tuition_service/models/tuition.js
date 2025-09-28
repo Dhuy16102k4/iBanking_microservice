@@ -4,7 +4,8 @@ const tuitionSchema = new mongoose.Schema({
   studentId: { type: String, required: true },
   semester: { type: String, required: true },
   amount: { type: mongoose.Decimal128, required: true },
-  status: { type: String, enum: ['UNPAID', 'PAID'], default: 'UNPAID' }
+  status: { type: String, enum: ['UNPAID', 'PAID'], default: 'UNPAID' },
+  deadline: { type: Date, required: true } 
 }, { timestamps: true })
 
 // Format JSON trả về
