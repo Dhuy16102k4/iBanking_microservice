@@ -23,7 +23,7 @@ async function acquireLock(key, ttl = 120000) {
 }
 
 async function releaseLock(key) {
-  const client = await initRedis()  
+  const client = await initRedis()
   await client.del(key)
 }
 
@@ -71,11 +71,11 @@ class TransactionController {
 
     try {
       const tuition = await getTuition(tuitionId)
-      
+
       if (tuition.status !== 'UNPAID') {
         throw new Error('Tuition already paid')
       }
-
+      // check deadline
       if (new Date(tuition.deadline) < new Date()) {
         throw new Error('Tuition payment deadline has passed')
       }
@@ -117,6 +117,7 @@ class TransactionController {
     const { transactionId, token } = req.body
     const userId = req.user.id
     try {
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
       if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
         return res.status(403).json({ message: 'Invalid token for this transaction' })
@@ -237,6 +238,41 @@ class TransactionController {
       res.status(500).json({ message: err.message })
     }
   }
+  //Hủy transaction
+  async cancelTransaction(req, res) {
+    const { transactionId, token } = req.body
+    const userId = req.user.id
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
+        return res.status(403).json({ message: 'Invalid token for this transaction' })
+      }
+
+      const trx = await Transaction.findById(transactionId)
+      if (!trx || trx.customerId.toString() !== userId) {
+        return res.status(404).json({ message: 'Transaction not found' })
+      }
+
+      // Chỉ cho hủy nếu chưa verify
+      if (trx.status !== 'INITIATED' && trx.status !== 'OTP_SENT') {
+        return res.status(400).json({ message: 'Transaction cannot be canceled at this stage' })
+      }
+
+      trx.status = 'CANCELED'
+      trx.failureReason = 'Canceled by user'
+      await trx.save()
+
+      res.json({ message: 'Transaction canceled successfully', transactionId, status: trx.status })
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Transaction token expired' })
+      }
+      res.status(400).json({ message: err.message })
+    }
+  }
+
 }
 
 

@@ -5,7 +5,7 @@ const transactionSchema = new mongoose.Schema({
   tuitionId: { type: String, required: true },
   status: {
     type: String,
-    enum: ['INITIATED', 'OTP_SENT', 'PENDING', 'SUCCESS', 'FAILED'],
+    enum: ['INITIATED', 'OTP_SENT', 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED'],
     default: 'INITIATED'
   },
   failureReason: String,

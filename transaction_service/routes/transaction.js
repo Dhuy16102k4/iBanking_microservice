@@ -9,9 +9,12 @@ router.post('/create', authenticateToken , transaction.createTransaction);
 
 router.post('/send', authenticateToken , transaction.sendOTP);
 
-
 router.post('/verify', authenticateToken , transaction.verifyOTP);
 
+router.post('/cancel', authenticateToken, transaction.cancelTransaction)
+
 router.get('/', authenticateToken , transaction.getTransactions);
+
+
 
 module.exports = router;
