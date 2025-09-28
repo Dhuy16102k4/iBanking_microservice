@@ -9,7 +9,7 @@ class OtpController {
     const { transactionId } = req.body
     try {
       const code = generateOtp()
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 phút
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 phút
       const otp = new Otp({ transactionId, code, expiresAt })
       await otp.save()
 

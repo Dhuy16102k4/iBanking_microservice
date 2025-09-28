@@ -3,10 +3,46 @@ const axios = require('axios')
 const sendOTPEmail = require('../utils/mailer')
 const mongoose = require('mongoose')
 const redis = require('redis')
-const client = redis.createClient()
 const jwt = require('jsonwebtoken')
-
 const { default: axiosRetry } = require('axios-retry')
+
+// ================= Redis Init =================
+let redisClient
+
+async function initRedis() {
+  if (!redisClient) {
+    // Nếu chạy Docker Compose, service name redis
+    redisClient = redis.createClient({ url: 'redis://redis:6379' })
+
+    redisClient.on('error', (err) => {
+      console.error('❌ Redis Client Error:', err)
+    })
+
+    await redisClient.connect()
+    console.log('✅ Redis connected in Transaction Service')
+  }
+  return redisClient
+}
+
+// ================= Axios Retry Config =================
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount) => retryCount * 1000,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+    error.response?.status >= 500,
+})
+
+// ================= Lock Helpers =================
+async function acquireLock(key, ttl = 120000) {
+  const client = await initRedis()
+  return await client.set(key, 'locked', { NX: true, PX: ttl })
+}
+
+async function releaseLock(key) {
+  const client = await initRedis()
+  await client.del(key)
+}
 
 
 

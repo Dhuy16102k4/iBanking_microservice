@@ -17,6 +17,12 @@ services:
       - "4001:4001"
     depends_on:
       - mongo
+ 
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
 
   auth:
     build: ./auth_service

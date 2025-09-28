@@ -9,6 +9,7 @@ const Payment = () => {
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
+  const [transactionToken, setTransactionToken] = useState(null); // ✅ lưu transaction token
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [notification, setNotification] = useState({ message: "", type: "" });
@@ -18,11 +19,28 @@ const Payment = () => {
 
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
-    setTimeout(() => setNotification({ message: "", type: "" }), 3000); // ⏳ auto hide
+    setTimeout(() => setNotification({ message: "", type: "" }), 3000);
   };
 
   const formatMoney = (num) =>
     Number(num).toLocaleString("vi-VN", { minimumFractionDigits: 0 });
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const isOverdue = (dateStr) => {
+    if (!dateStr) return false;
+    const now = new Date();
+    const deadline = new Date(dateStr);
+    return deadline < now; // true nếu quá hạn
+  };
 
   // 🔎 Tra cứu học phí
   const handleFetchTuition = async () => {
@@ -37,7 +55,10 @@ const Payment = () => {
       setTuitionInfo(data);
       showNotification("✅ Tra cứu học phí thành công", "success");
     } catch (err) {
-      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+      showNotification(
+        "❌ " + (err.response?.data?.message || err.message),
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -52,41 +73,53 @@ const Payment = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTransactionId(data.transactionId);
+      setTransactionToken(data.token); // ✅ lưu transaction token
       showNotification("✅ Giao dịch đã được khởi tạo", "success");
     } catch (err) {
-      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+      showNotification(
+        "❌ " + (err.response?.data?.message || err.message),
+        "error"
+      );
     }
   };
 
   // ✉️ B2: Gửi OTP
   const handleSendOTP = async () => {
-    if (!transactionId) return showNotification("⚠️ Bạn cần tạo giao dịch trước", "warning");
+    if (!transactionId || !transactionToken)
+      return showNotification("⚠️ Bạn cần tạo giao dịch trước", "warning");
     try {
       const { data } = await axios.post(
         "http://localhost:4000/transaction/send",
-        { transactionId },
+        { transactionId, token: transactionToken }, // ✅ gửi transaction token
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setOtpSent(true);
       showNotification("✅ " + data.message, "success");
     } catch (err) {
-      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+      showNotification(
+        "❌ " + (err.response?.data?.message || err.message),
+        "error"
+      );
     }
   };
 
   // 🔐 B3: Xác thực OTP + Thanh toán
   const handleConfirmPayment = async () => {
-    if (!transactionId) return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
+    if (!transactionId || !transactionToken)
+      return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
     try {
       const { data } = await axios.post(
         "http://localhost:4000/transaction/verify",
-        { transactionId, code: otpCode },
+        { transactionId, code: otpCode, token: transactionToken }, // ✅ thêm token
         { headers: { Authorization: `Bearer ${token}` } }
       );
       showNotification("🎉 " + data.message, "success");
       navigate("/transactions");
     } catch (err) {
-      showNotification("❌ " + (err.response?.data?.message || err.message), "error");
+      showNotification(
+        "❌ " + (err.response?.data?.message || err.message),
+        "error"
+      );
     }
   };
 
@@ -103,7 +136,10 @@ const Payment = () => {
 
       <header className={styles.dd}>
         <h1>💳 Tuition Payment</h1>
-        <button onClick={() => navigate("/dashboard")} className={styles.backBtn}>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className={styles.backBtn}
+        >
           ⬅ Back
         </button>
       </header>
@@ -147,6 +183,7 @@ const Payment = () => {
               <tr>
                 <th>Semester</th>
                 <th>Amount</th>
+                <th>Deadline</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
@@ -156,6 +193,17 @@ const Payment = () => {
                 <tr key={t._id}>
                   <td>{t.semester}</td>
                   <td>{formatMoney(t.amount)} VND</td>
+                  <td style={{ fontWeight: "600" }}>
+                    {isOverdue(t.deadline) ? (
+                      <span style={{ color: "red" }}>
+                        ⏰ Quá hạn ({formatDate(t.deadline)})
+                      </span>
+                    ) : (
+                      <span style={{ color: "lightcoral" }}>
+                        {formatDate(t.deadline)}
+                      </span>
+                    )}
+                  </td>
                   <td>
                     <span
                       style={{
@@ -170,6 +218,10 @@ const Payment = () => {
                     {t.status === "PAID" ? (
                       <span style={{ color: "lightgreen", fontWeight: "600" }}>
                         ✅ Đã thanh toán
+                      </span>
+                    ) : isOverdue(t.deadline) ? (
+                      <span style={{ color: "red", fontWeight: "600" }}>
+                        ❌ Quá hạn, không thể thanh toán
                       </span>
                     ) : !transactionId ? (
                       <button
