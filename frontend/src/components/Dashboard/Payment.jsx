@@ -103,25 +103,35 @@ const Payment = () => {
     }
   };
 
-  // 🔐 B3: Xác thực OTP + Thanh toán
-  const handleConfirmPayment = async () => {
-    if (!transactionId || !transactionToken)
-      return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
-    try {
-      const { data } = await axios.post(
-        "http://localhost:4000/transaction/verify",
-        { transactionId, code: otpCode, token: transactionToken }, // ✅ thêm token
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      showNotification("🎉 " + data.message, "success");
-      navigate("/transactions");
-    } catch (err) {
-      showNotification(
-        "❌ " + (err.response?.data?.message || err.message),
-        "error"
-      );
-    }
-  };
+
+// 🔐 B3: Xác thực OTP + Thanh toán
+const handleConfirmPayment = async () => {
+  if (!transactionId || !transactionToken)
+    return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
+
+  try {
+    const { data } = await axios.post(
+      "http://localhost:4000/transaction/verify",
+      { transactionId, code: otpCode, token: transactionToken },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+
+          "Idempotency-Key": transactionId, 
+        },
+      }
+    );
+
+    showNotification("🎉 " + data.message, "success");
+    navigate("/transactions");
+  } catch (err) {
+    showNotification(
+      "❌ " + (err.response?.data?.message || err.message),
+      "error"
+    );
+  }
+};
+
 
   return (
     <div className={styles.paymentContainer}>
@@ -215,43 +225,53 @@ const Payment = () => {
                     </span>
                   </td>
                   <td>
-                    {t.status === "PAID" ? (
-                      <span style={{ color: "lightgreen", fontWeight: "600" }}>
-                        ✅ Đã thanh toán
-                      </span>
-                    ) : isOverdue(t.deadline) ? (
-                      <span style={{ color: "red", fontWeight: "600" }}>
-                        ❌ Quá hạn, không thể thanh toán
-                      </span>
-                    ) : !transactionId ? (
-                      <button
-                        onClick={() => handleCreateTransaction(t._id)}
-                        className={styles.payBtn}
-                      >
-                        Tạo giao dịch
-                      </button>
-                    ) : !otpSent ? (
-                      <button onClick={handleSendOTP} className={styles.payBtn}>
-                        Gửi OTP
-                      </button>
-                    ) : (
-                      <div className={styles.otpBox}>
-                        <input
-                          type="text"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          placeholder="Nhập OTP"
-                        />
-                        <button
-                          onClick={handleConfirmPayment}
-                          disabled={!otpCode}
-                          className={styles.confirmBtn}
-                        >
-                          Xác nhận
-                        </button>
-                      </div>
-                    )}
-                  </td>
+  {t.status === "PAID" ? (
+    <span style={{ color: "lightgreen", fontWeight: "600" }}>
+      ✅ Đã thanh toán
+    </span>
+  ) : isOverdue(t.deadline) ? (
+    <span style={{ color: "red", fontWeight: "600" }}>
+      ❌ Quá hạn, không thể thanh toán
+    </span>
+  ) : !transactionId ? (
+    <button
+      onClick={() => handleCreateTransaction(t._id)}
+      className={styles.payBtn}
+    >
+      Tạo giao dịch
+    </button>
+  ) : !otpSent ? (
+    <button
+      onClick={() => {
+        if (t.status === "OTP_SENT") {
+          showNotification("⚠️ Giao dịch đang được thực hiện, vui lòng đợi", "warning");
+        } else {
+          handleSendOTP();
+        }
+      }}
+      className={styles.payBtn}
+    >
+      {t.status === "OTP_SENT" ? "Đang xử lý..." : "Gửi OTP"}
+    </button>
+  ) : (
+    <div className={styles.otpBox}>
+      <input
+        type="text"
+        value={otpCode}
+        onChange={(e) => setOtpCode(e.target.value)}
+        placeholder="Nhập OTP"
+      />
+      <button
+        onClick={handleConfirmPayment}
+        disabled={!otpCode}
+        className={styles.confirmBtn}
+      >
+        Xác nhận
+      </button>
+    </div>
+  )}
+</td>
+
                 </tr>
               ))}
             </tbody>
