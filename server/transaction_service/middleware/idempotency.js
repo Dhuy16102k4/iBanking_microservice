@@ -4,7 +4,7 @@ let redisClient;
 async function initRedis() {
   if (!redisClient) {
     redisClient = redis.createClient({ url: 'redis://redis:6379' });
-    redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
+    redisClient.on('error', (err) => console.error(' Redis Error:', err));
     await redisClient.connect();
   }
   return redisClient;
