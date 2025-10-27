@@ -9,20 +9,37 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    # ✅ [FIX 1 & 2] Thêm healthcheck để khởi tạo Replica Set và kiểm tra trạng thái
+    healthcheck:
+      test: |
+        mongosh --host mongo:27017 --eval \
+        "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) }"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    # ✅ [IMPROVEMENT] Thêm healthcheck cho Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   users:
     build: ./user_service
     env_file: ./user_service/.env
     ports:
       - "4001:4001"
+    # ✅ [FIX 2] Chờ cho đến khi mongo thực sự sẵn sàng
     depends_on:
-      - mongo
- 
-  redis:
-    image: redis:7
-    container_name: redis
-    ports:
-      - "6379:6379"
+      mongo:
+        condition: service_healthy
 
   auth:
     build: ./auth_service
@@ -30,7 +47,8 @@ services:
     ports:
       - "4002:4002"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   transaction:
     build: ./transaction_service
@@ -38,7 +56,8 @@ services:
     ports:
       - "4003:4003"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   student:
     build: ./student_service
@@ -46,7 +65,8 @@ services:
     ports:
       - "4004:4004"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   tuition:
     build: ./tuition_service
@@ -54,7 +74,8 @@ services:
     ports:
       - "4005:4005"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   otp:
     build: ./otp_service
@@ -62,12 +83,21 @@ services:
     ports:
       - "4006:4006"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   gateway:
     build: ./gate_way
     ports:
       - "4000:4000"
+    # ✅ [FIX 3] Gateway phải chờ tất cả các service khác
+    depends_on:
+      - users
+      - auth
+      - transaction
+      - student
+      - tuition
+      - otp
 
 volumes:
   mongo_data:
