@@ -7,10 +7,6 @@ router.post('/register', userController.register)
 router.get('/profile', authenticateToken, userController.getProfile)
 //router.post('/balance', authenticateToken, userController.updateBalance)
 
-
-
-
-
 //services
 router.get('/id/:userId', userController.getUserbyId)        
 router.get('/username/:username', userController.getUserByUsername)

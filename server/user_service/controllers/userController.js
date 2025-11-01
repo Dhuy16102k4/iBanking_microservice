@@ -109,7 +109,7 @@ class UserController {
     }
   }
 
-  async updateBalance(req, res) {
+  async deductBalance(req, res) {
     const { amountToDeduct, transactionId } = req.body;
     const userId = req.params.id;
     const session = await mongoose.startSession();

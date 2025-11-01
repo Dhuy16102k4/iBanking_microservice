@@ -1,6 +1,9 @@
 const Transaction = require('../models/transaction')
 const axios = require('axios')
-const sendOTPEmail = require('../utils/mailer')
+const { 
+  sendOTP: sendOTPEmail, 
+  sendSuccessEmail 
+} = require('../utils/mailer')
 const mongoose = require('mongoose')
 const redis = require('redis')
 const jwt = require('jsonwebtoken')
@@ -44,52 +47,38 @@ async function releaseLock(key) {
   await client.del(key)
 }
 
-
-
-axiosRetry(axios, {
-  retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000,
-  retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status >= 500,
-})
-
-
-async function acquireLock(key, ttl = 120000) {
-  const client = await initRedis()
-  return await client.set(key, 'locked', { NX: true, PX: ttl })
-}
-
-async function releaseLock(key) {
-  const client = await initRedis()
-  await client.del(key)
-}
-
-
+// ================== API Call Helpers (ĐÃ SỬA) ==================
 
 async function getTuition(tuitionId) {
   const res = await axios.get(`http://gateway:4000/tuition/id/${tuitionId}`)
   return res.data
 }
+
+// === SỬA LỖI ROUTE 1 ===
+// Method: POST (thay vì PATCH)
+// Path: /users/balance/deduct/:userId (thay vì /users/balance/:userId)
 async function deductUserBalance(userId, amount, transactionId) {
-    // Gửi số tiền cần trừ, không phải số dư mới
-    await axios.patch(`http://gateway:4000/users/balance/${userId}`, { 
-        amountToDeduct: amount,
-        transactionId: transactionId // Gửi kèm để user_service log lại
-    });
+  await axios.post(`http://gateway:4000/users/balance/deduct/${userId}`, { 
+      amountToDeduct: amount,
+      transactionId: transactionId 
+  });
 }
+
+// === SỬA LỖI ROUTE 2 ===
+// Method: POST (thay vì PATCH)
 async function revertUserDeduction(userId, amount, transactionId) {
   console.error(`[SAGA_COMPENSATION] Reverting deduction for TxID: ${transactionId}. Amount: ${amount}`);
   try {
-    await axios.patch(`http://gateway:4000/users/balance/credit/${userId}`, { 
+    await axios.post(`http://gateway:4000/users/balance/credit/${userId}`, { 
       amountToCredit: amount,
-      transactionId: `COMPENSATION_FOR_${transactionId}` // Ghi log cho rõ
+      transactionId: `COMPENSATION_FOR_${transactionId}` 
     });
     console.log(`[SAGA_COMPENSATION] Revert successful for TxID: ${transactionId}`);
   } catch (error) {
-    // Đây là lỗi SAGA nghiêm trọng, cần thông báo
     console.error(`[SAGA_FATAL_ERROR] FAILED TO REVERT BALANCE FOR TxID: ${transactionId}`, error.message);
-    // Cần có hệ thống cảnh báo (vd: Sentry, PagerDuty) ở đây
   }
 }
+
 async function updateTuition(tuitionId, updateData) {
   await axios.patch(`http://gateway:4000/tuition/${tuitionId}`, updateData)
 }
@@ -99,13 +88,9 @@ async function getUserInfo(userId) {
   return res.data
 }
 
-async function updateUserBalance(userId, newBalance) {
-  await axios.patch(`http://gateway:4000/users/balance/${userId}`, { newBalance })
-}
-
-async function revertUserBalance(userId, originalBalance) {
-  await axios.patch(`http://gateway:4000/users/balance/${userId}`, { newBalance: originalBalance })
-}
+// (Các hàm updateUserBalance, revertUserBalance cũ không còn được dùng trong SAGA)
+// async function updateUserBalance(userId, newBalance) { ... }
+// async function revertUserBalance(userId, originalBalance) { ... }
 
 async function createOTP(transactionId) {
   const res = await axios.post(`http://gateway:4000/otp/create`, { transactionId })
@@ -205,215 +190,124 @@ class TransactionController {
       res.status(400).json({ message: err.message })
     }
   }
-async verifyOTP(req, res) {
-  const { transactionId, code, token } = req.body;
-  const userId = req.user.id;
-  const session = await mongoose.startSession();
-  let lockKey;
-
-  try {
-    // ===== 1. Lấy Transaction =====
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction) throw new Error('Transaction not found');
-
-    // ===== 2. Redis lock tránh double spend =====
-    lockKey = `lock:tuition:${transaction.tuitionId}`;
-    const lockAcquired = await acquireLock(lockKey);
-    if (!lockAcquired) {
-      throw new Error('Another transaction is processing this tuition');
-    }
-
-    // ===== 3. Start DB transaction =====
-    session.startTransaction();
-
-    // ===== 4. Verify JWT =====
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
-      throw new Error('Invalid token for this transaction');
-    }
-
-    // ===== 5. Load transaction trong session =====
-    const trx = await Transaction.findById(transactionId).session(session);
-    if (!trx || trx.customerId.toString() !== userId) throw new Error('Transaction not found');
-    if (trx.status !== 'OTP_SENT') throw new Error('Invalid status for OTP verification');
-
-    // ===== 6. Verify OTP =====
-    const otpResult = await verifyOTP(transactionId, code);
-    if (!otpResult.valid) throw new Error('Invalid or expired OTP');
-
-    trx.status = 'PENDING';
-    await trx.save({ session });
-
-    // ===== 7. Check tuition status =====
-    const tuition = await getTuition(trx.tuitionId);
-    if (tuition.status !== 'UNPAID') throw new Error('Tuition already paid');
-
-    // ===== 8. Check user balance =====
-    const user = await getUserInfo(userId);
-    const amount = parseFloat(tuition.amount);
-    if (user.balance < amount) throw new Error('Insufficient balance');
-
-    // ===== 9. Deduct balance =====
-    const originalBalance = user.balance;
-    await updateUserBalance(userId, user.balance - amount, transactionId);
-
-    // ===== 10. Update tuition =====
-    try {
-      await updateTuition(tuition._id, { status: 'PAID' }, transactionId);
-    } catch (err) {
-      // rollback balance nếu fail
-      await revertUserBalance(userId, originalBalance, transactionId);
-      throw new Error('Failed to update tuition: ' + err.message);
-    }
-
-    // ===== 11. Mark transaction SUCCESS =====
-    trx.status = 'SUCCESS';
-    await trx.save({ session });
-
-    await session.commitTransaction();
-
-    // ===== 12. Kết quả =====
-    const result = { message: 'Payment successful', transactionId };
-    if (req.saveIdempotency) {
-      // lưu vào Redis để lần sau request lại với cùng IdemKey thì trả luôn
-      await req.saveIdempotency(result);
-    }
-
-    return res.json(result);
-
-  } catch (err) {
-    await session.abortTransaction();
-
-    if (transactionId) {
-      await Transaction.findByIdAndUpdate(transactionId, {
-        status: 'FAILED',
-        failureReason: err.message
-      });
-    }
-
-    return res.status(400).json({ message: err.message });
-
-  } finally {
-    session.endSession();
-    if (lockKey) await releaseLock(lockKey);
-  }
-}
-
-  // B3: Xác minh OTP + Thanh toán
+  
+  // B3: Xác minh OTP + Thanh toán 
   async verifyOTP(req, res) {
-  const { transactionId, code, token } = req.body;
-  const userId = req.user.id;
-  const session = await mongoose.startSession();
-  let lockKey;
+    const { transactionId, code, token } = req.body;
+    const userId = req.user.id;
+    const session = await mongoose.startSession();
+    let lockKey;
 
-  // Biến cờ SAGA
-  let balanceDeducted = false;
-  let amount = 0; // Lưu số tiền để hoàn trả nếu cần
+    let balanceDeducted = false;
+    let amount = 0; 
+    let userEmail = '';
 
-  try {
-    // ===== 1. Lấy Transaction (NGOÀI session) =====
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction) throw new Error('Transaction not found');
-
-    // ===== 2. Redis lock (Giữ nguyên) =====
-    lockKey = `lock:tuition:${transaction.tuitionId}`;
-    const lockAcquired = await acquireLock(lockKey);
-    if (!lockAcquired) {
-      throw new Error('Another transaction is processing this tuition');
-    }
-
-    // ===== 3. Start DB transaction (Giữ nguyên) =====
-    session.startTransaction();
-
-    // ===== 4. Verify JWT (Giữ nguyên) =====
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
-      throw new Error('Invalid token for this transaction');
-    }
-
-    // ===== 5. Load transaction (TRONG session) (Giữ nguyên) =====
-    const trx = await Transaction.findById(transactionId).session(session);
-    if (!trx || trx.customerId.toString() !== userId) throw new Error('Transaction not found');
-    if (trx.status !== 'OTP_SENT') throw new Error('Invalid status for OTP verification');
-
-    // ===== 6. Verify OTP (Giữ nguyên) =====
-    const otpResult = await verifyOTP(transactionId, code);
-    if (!otpResult.valid) throw new Error('Invalid or expired OTP');
-
-    trx.status = 'PENDING';
-    await trx.save({ session });
-
-    // ===== 7. Check tuition status (Giữ nguyên) =====
-    const tuition = await getTuition(trx.tuitionId);
-    if (tuition.status !== 'UNPAID') throw new Error('Tuition already paid');
-
-    // ===== 8. Check user balance (Giữ nguyên, nhưng gán vào biến 'amount') =====
-    const user = await getUserInfo(userId);
-    amount = parseFloat(tuition.amount); // Gán giá trị vào 'amount'
-    if (user.balance < amount) throw new Error('Insufficient balance');
-
-    // ========================================================
-    // ===== 9. [SỬA ĐỔI] Trừ tiền (gọi user_service) =====
-    // ========================================================
     try {
-      await deductUserBalance(userId, amount, transactionId);
-      balanceDeducted = true; // --- ĐÁNH DẤU: ĐÃ TRỪ TIỀN ---
-    } catch (err) {
-      // Lỗi từ user_service (409 Conflict, 400 Insufficient)
-      const errorMessage = err.response?.data?.message || err.message;
-      throw new Error(`Balance deduction failed: ${errorMessage}`);
-    }
+      // ===== 1. Lấy Transaction (NGOÀI session) =====
+      const transaction = await Transaction.findById(transactionId);
+      if (!transaction) throw new Error('Transaction not found');
 
-    // ========================================================
-    // ===== 10. [SỬA ĐỔI] Update tuition =====
-    // ========================================================
-    // Nếu hàm này lỗi, nó sẽ nhảy xuống CATCH và SAGA sẽ chạy
-    await updateTuition(tuition._id, { status: 'PAID' });
- 
-    // ===== 11. Mark transaction SUCCESS (Giữ nguyên) =====
-    trx.status = 'SUCCESS';
-    await trx.save({ session });
+      // ===== 2. Redis lock  =====
+      lockKey = `lock:tuition:${transaction.tuitionId}`;
+      const lockAcquired = await acquireLock(lockKey);
+      if (!lockAcquired) {
+        throw new Error('Another transaction is processing this tuition');
+      }
 
-    await session.commitTransaction();
+      // ===== 3. Start DB transaction =====
+      session.startTransaction();
 
-    // ===== 12. Kết quả Idempotency (Giữ nguyên) =====
-    const result = { message: 'Payment successful', transactionId };
-    if (req.saveIdempotency) {
-      await req.saveIdempotency(result);
-    }
+      // ===== 4. Verify JWT=====
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
+        throw new Error('Invalid token for this transaction');
+      }
 
-    return res.json(result);
+      // ===== 5. Load transaction (TRONG session)   =====
+      const trx = await Transaction.findById(transactionId).session(session);
+      if (!trx || trx.customerId.toString() !== userId) throw new Error('Transaction not found');
+      if (trx.status !== 'OTP_SENT') throw new Error('Invalid status for OTP verification');
 
-  } catch (err) {
-    // ========================================================
-    // ===== CATCH BLOCK NÂNG CẤP (Xử lý SAGA) =====
-    // ========================================================
-    await session.abortTransaction();
+      // ===== 6. Verify OTP =====
+      const otpResult = await verifyOTP(transactionId, code);
+      if (!otpResult.valid) throw new Error('Invalid or expired OTP');
 
-    // KIỂM TRA: Nếu tiền đã bị trừ (balanceDeducted == true)
-    // nhưng transaction thất bại (lỗi ở bước 10 hoặc 11)
-    // -> PHẢI HOÀN TIỀN
-    if (balanceDeducted) {
-      // Đây là Giao dịch Bù trừ
-      await revertUserDeduction(userId, amount, transactionId);
-    }
+      trx.status = 'PENDING';
+      await trx.save({ session });
 
-    // Cập nhật trạng thái transaction là FAILED (Giữ nguyên)
-    if (transactionId) {
-      await Transaction.findByIdAndUpdate(transactionId, {
-        status: 'FAILED',
-        failureReason: err.message
+      // ===== 7. Check tuition status   =====
+      const tuition = await getTuition(trx.tuitionId);
+      if (tuition.status !== 'UNPAID') throw new Error('Tuition already paid');
+
+      // ===== 8. Check user balance =====
+      const user = await getUserInfo(userId);
+      amount = parseFloat(tuition.amount); 
+      userEmail = user.email; // <<<--- LẤY EMAIL USER
+      if (user.balance < amount) throw new Error('Insufficient balance');
+
+      // 9. Trừ tiền (gọi user_service)
+      try {
+        await deductUserBalance(userId, amount, transactionId);
+        balanceDeducted = true; 
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message;
+        throw new Error(`Balance deduction failed: ${errorMessage}`);
+      }
+      // ===== 10. Update tuition =====
+      await updateTuition(tuition._id, { status: 'PAID' });
+    
+      // ===== 11. Mark transaction SUCCESS====
+      trx.status = 'SUCCESS';
+      await trx.save({ session });
+
+      await session.commitTransaction();
+      // GỬI EMAIL THÔNG BÁO THÀNH CÔNG
+
+      sendSuccessEmail(userEmail, {
+        transactionId: trx._id.toString(),
+        tuitionId: trx.tuitionId.toString(),
+        amount: amount,
+        date: new Date()
+      }).catch(err => {
+        console.error(`[NON-CRITICAL_ERROR] Failed to send success email for TxID ${trx._id}:`, err.message);
       });
+      // ==============================================
+
+      // ===== 12. Kết quả Idempotency =====
+      const result = { message: 'Payment successful', transactionId };
+      if (req.saveIdempotency) {
+        await req.saveIdempotency(result);
+      }
+
+      return res.json(result);
+
+    } catch (err) {
+      await session.abortTransaction();
+
+      // KIỂM TRA: Nếu tiền đã bị trừ (balanceDeducted == true)
+      // -> PHẢI HOÀN TIỀN
+      if (balanceDeducted) {
+        // Dùng hàm đã sửa lỗi
+        await revertUserDeduction(userId, amount, transactionId);
+      }
+
+      // Cập nhật trạng thái transaction là FAILED 
+      if (transactionId) {
+        await Transaction.findByIdAndUpdate(transactionId, {
+          status: 'FAILED',
+          failureReason: err.message
+        });
+      }
+
+      return res.status(400).json({ message: err.message });
+
+    } finally {
+      session.endSession();
+      if (lockKey) await releaseLock(lockKey);
     }
-
-    return res.status(400).json({ message: err.message });
-
-  } finally {
-    session.endSession();
-    if (lockKey) await releaseLock(lockKey);
   }
-}
 
+  
   async getTransactions(req, res) {
     const userId = req.user.id
     try {
@@ -423,6 +317,7 @@ async verifyOTP(req, res) {
       res.status(500).json({ message: err.message })
     }
   }
+  
   //Hủy transaction
   async cancelTransaction(req, res) {
     const { transactionId, token } = req.body
@@ -444,7 +339,7 @@ async verifyOTP(req, res) {
       if (trx.status !== 'INITIATED' && trx.status !== 'OTP_SENT') {
         return res.status(400).json({ message: 'Transaction cannot be canceled at this stage' })
       }
-      if (transaction.status === 'OTP_SENT') {
+      if (trx.status === 'OTP_SENT') {
         return res.status(409).json({ message: 'Another OTP request is already being processed for this tuition' })
       }
 
@@ -460,8 +355,6 @@ async verifyOTP(req, res) {
       res.status(400).json({ message: err.message })
     }
   }
-
 }
-
 
 module.exports = new TransactionController()
