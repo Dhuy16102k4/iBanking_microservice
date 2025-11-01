@@ -190,6 +190,10 @@ async verifyOTP(req, res) {
   const userId = req.user.id;
   const session = await mongoose.startSession();
   let lockKey;
+  let user;
+  let amount;
+  let tuition;
+  let trx;
 
   try {
     // ===== 1. Lấy Transaction =====
@@ -213,24 +217,24 @@ async verifyOTP(req, res) {
     }
 
     // ===== 5. Load transaction trong session =====
-    const trx = await Transaction.findById(transactionId).session(session);
+    trx = await Transaction.findById(transactionId).session(session);
     if (!trx || trx.customerId.toString() !== userId) throw new Error('Transaction not found');
     if (trx.status !== 'OTP_SENT') throw new Error('Invalid status for OTP verification');
 
     // ===== 6. Verify OTP =====
-    const otpResult = await verifyOTP(transactionId, code);
+    const otpResult = await verifyOTP(transactionId, code); 
     if (!otpResult.valid) throw new Error('Invalid or expired OTP');
 
     trx.status = 'PENDING';
     await trx.save({ session });
 
     // ===== 7. Check tuition status =====
-    const tuition = await getTuition(trx.tuitionId);
+    tuition = await getTuition(trx.tuitionId);
     if (tuition.status !== 'UNPAID') throw new Error('Tuition already paid');
 
     // ===== 8. Check user balance =====
-    const user = await getUserInfo(userId);
-    const amount = parseFloat(tuition.amount);
+    user = await getUserInfo(userId);
+    amount = parseFloat(tuition.amount);
     if (user.balance < amount) throw new Error('Insufficient balance');
 
     // ===== 9. Deduct balance =====
@@ -250,9 +254,18 @@ async verifyOTP(req, res) {
     trx.status = 'SUCCESS';
     await trx.save({ session });
 
+    // Commit transaction
     await session.commitTransaction();
+    sendPaymentSuccessEmail(user.email, {
+      amount: amount,
+      transactionId: trx._id.toString(),
+      tuitionId: tuition._id.toString(),
+      paymentDate: new Date()
+    }).catch(emailErr => {
+      console.error(`[Non-blocking] Failed to send success email for trx ${trx._id}:`, emailErr.message);
+    });
 
-    // ===== 12. Kết quả =====
+    // ===== 12. Kết quả (Xử lý Idempotency) =====
     const result = { message: 'Payment successful', transactionId };
     if (req.saveIdempotency) {
       // lưu vào Redis để lần sau request lại với cùng IdemKey thì trả luôn
@@ -262,9 +275,11 @@ async verifyOTP(req, res) {
     return res.json(result);
 
   } catch (err) {
+    // Rollback mọi thứ nếu có lỗi
     await session.abortTransaction();
 
     if (transactionId) {
+      // Cập nhật transaction là FAILED
       await Transaction.findByIdAndUpdate(transactionId, {
         status: 'FAILED',
         failureReason: err.message
@@ -274,89 +289,11 @@ async verifyOTP(req, res) {
     return res.status(400).json({ message: err.message });
 
   } finally {
+    // Luôn luôn kết thúc session và giải phóng lock
     session.endSession();
     if (lockKey) await releaseLock(lockKey);
   }
 }
-
-  // B3: Xác minh OTP + Thanh toán
-  async verifyOTP(req, res) {
-    const { transactionId, code, token } = req.body
-    const userId = req.user.id
-    const session = await mongoose.startSession()
-    let lockKey
-
-    try {
-      const transaction = await Transaction.findById(transactionId)
-      if (!transaction) throw new Error('Transaction not found')
-      // Redis lock tránh double spend
-      lockKey = `lock:tuition:${transaction.tuitionId}`
-      const lockAcquired = await acquireLock(lockKey)
-      if (!lockAcquired) {
-        throw new Error('Another transaction is processing this tuition')
-      }
-
-      session.startTransaction()
-
-      // Xác minh JWT
-      const decoded = jwt.verify(token, process.env.JWT_SECRET)
-      if (decoded.transactionId !== transactionId || decoded.userId !== userId) {
-        throw new Error('Invalid token for this transaction')
-      }
-
-      const trx = await Transaction.findById(transactionId).session(session)
-      if (!trx || trx.customerId.toString() !== userId) {
-        throw new Error('Transaction not found')
-      }
-      if (trx.status !== 'OTP_SENT') {
-        throw new Error('Invalid status for OTP verification')
-      }
-
-      const otpResult = await verifyOTP(transactionId, code)
-      if (!otpResult.valid) throw new Error('Invalid or expired OTP')
-
-      trx.status = 'PENDING'
-      await trx.save({ session })
-
-      const tuition = await getTuition(trx.tuitionId)
-      if (tuition.status !== 'UNPAID') {
-        throw new Error('Tuition already paid')
-      }
-
-      const user = await getUserInfo(userId)
-      const amount = parseFloat(tuition.amount)
-      if (user.balance < amount) {
-        throw new Error('Insufficient balance')
-      }
-
-      const originalBalance = user.balance
-      await updateUserBalance(userId, user.balance - amount, transactionId)
-      try {
-        await updateTuition(tuition._id, { status: 'PAID' }, transactionId)
-      } catch (err) {
-        await revertUserBalance(userId, originalBalance, transactionId)
-        throw new Error('Failed to update tuition: ' + err.message)
-      }
-
-      trx.status = 'SUCCESS'
-      await trx.save({ session })
-
-      await session.commitTransaction()
-      res.json({ message: 'Payment successful', transactionId })
-    } catch (err) {
-      await session.abortTransaction()
-      if (transactionId) {
-        await Transaction.findByIdAndUpdate(transactionId, {
-          status: 'FAILED',
-          failureReason: err.message
-        })
-      }
-      res.status(400).json({ message: err.message })
-    } finally {
-      session.endSession()
-      if (lockKey) await releaseLock(lockKey)
-    }
-  }
 
   async getTransactions(req, res) {
     const userId = req.user.id
