@@ -7,14 +7,11 @@ router.post('/register', userController.register)
 router.get('/profile', authenticateToken, userController.getProfile)
 //router.post('/balance', authenticateToken, userController.updateBalance)
 
-
-
-
-
 //services
 router.get('/id/:userId', userController.getUserbyId)        
 router.get('/username/:username', userController.getUserByUsername)
 router.patch('/balance/:userId', userController.updateBalance)
-
+router.post('/balance/deduct/:id', userController.deductBalance);
+router.post('/balance/credit/:id', userController.creditBalance);
 module.exports = router
 
