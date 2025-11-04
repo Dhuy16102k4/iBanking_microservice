@@ -4,14 +4,38 @@ import styles from "./payment.module.css";
 import axios from "axios";
 import Notification from "./Notification";
 
+/** ===== Idempotency helpers (giữ nguyên) ===== */
+function getIdemKey(action, id) {
+  const storageKey = `idem:${action}:${id}`;
+  let val = localStorage.getItem(storageKey);
+  if (!val) {
+    const rnd = (() => {
+      if (window.crypto?.getRandomValues) {
+        const a = new Uint32Array(2);
+        window.crypto.getRandomValues(a);
+        return `${a[0].toString(16)}${a[1].toString(16)}`;
+      }
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    })();
+    val = `${action}-${id}-${rnd}`;
+    localStorage.setItem(storageKey, val);
+  }
+  return val;
+}
+function clearIdemKey(action, id) {
+  localStorage.removeItem(`idem:${action}:${id}`);
+}
+
 const Payment = () => {
   const [studentId, setStudentId] = useState("");
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [transactionId, setTransactionId] = useState(null);
-  const [transactionToken, setTransactionToken] = useState(null); // ✅ save transaction token
+
+  // ✅ State theo dòng
+  const [active, setActive] = useState(null); // { tuitionId, transactionId, token }
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+
   const [notification, setNotification] = useState({ message: "", type: "" });
 
   const navigate = useNavigate();
@@ -28,18 +52,14 @@ const Payment = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    return d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   const isOverdue = (dateStr) => {
     if (!dateStr) return false;
     const now = new Date();
     const deadline = new Date(dateStr);
-    return deadline < now; // return true if overdue
+    return deadline < now;
   };
 
   // 🔎 Fetch tuition info
@@ -54,71 +74,100 @@ const Payment = () => {
       );
       setTuitionInfo(data);
       showNotification("Tuition information retrieved successfully", "success");
+      // Reset context khi tìm mới
+      setActive(null);
+      setOtpSent(false);
+      setOtpCode("");
     } catch (err) {
-      showNotification(
-        "❌ " + (err.response?.data?.message || err.message),
-        "error"
-      );
+      showNotification(" " + (err.response?.data?.message || err.message), "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🏦 Step 1: Create transaction
+  // 🏦 Step 1: Create transaction (per-row)
   const handleCreateTransaction = async (tuitionId) => {
     try {
+      const idemKey = getIdemKey("create", tuitionId);
       const { data } = await axios.post(
         "http://localhost:4000/transaction/create",
         { tuitionId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Idempotency-Key": idemKey,
+          },
+        }
       );
-      setTransactionId(data.transactionId);
-      setTransactionToken(data.token); // ✅ save transaction token
+
+      // 🔒 Chỉ active cho đúng dòng
+      setActive({
+        tuitionId,
+        transactionId: data.transactionId,
+        token: data.token,
+      });
+      setOtpSent(false);
+      setOtpCode("");
+
       showNotification("Transaction initialized successfully", "success");
+      clearIdemKey("create", tuitionId);
     } catch (err) {
-      showNotification(
-        "❌ " + (err.response?.data?.message || err.message),
-        "error"
-      );
+      showNotification(" " + (err.response?.data?.message || err.message), "error");
     }
   };
 
-  // ✉️ Step 2: Send OTP
+  // ✉️ Step 2: Send OTP (only for active row)
   const handleSendOTP = async () => {
-    if (!transactionId || !transactionToken)
+    if (!active?.transactionId || !active?.token)
       return showNotification("Please create a transaction first", "warning");
     try {
+      const idemKey = getIdemKey("send", active.transactionId);
       const { data } = await axios.post(
         "http://localhost:4000/transaction/send",
-        { transactionId, token: transactionToken },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { transactionId: active.transactionId, token: active.token },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Idempotency-Key": idemKey,
+          },
+        }
       );
       setOtpSent(true);
-      showNotification("✅ " + data.message, "success");
+      showNotification(" " + data.message, "success");
+      clearIdemKey("send", active.transactionId);
     } catch (err) {
       showNotification("" + (err.response?.data?.message || err.message), "error");
     }
   };
 
-  // 🔐 Step 3: Verify OTP + Payment
+  //  Step 3: Verify OTP + Payment (only for active row)
   const handleConfirmPayment = async () => {
-    if (!transactionId || !transactionToken)
+    if (!active?.transactionId || !active?.token)
       return showNotification("No transaction available for confirmation", "warning");
-
     try {
+      const idemKey = getIdemKey("verify", active.transactionId);
       const { data } = await axios.post(
         "http://localhost:4000/transaction/verify",
-        { transactionId, code: otpCode, token: transactionToken },
+        { transactionId: active.transactionId, code: otpCode, token: active.token },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-
-            "Idempotency-Key": transactionId, // ✅ ensures no duplicate payments
+            "Idempotency-Key": idemKey,
           },
         }
       );
 
-      showNotification("🎉 " + data.message, "success");
+      showNotification(" " + data.message, "success");
+
+      // Clear các key liên quan transaction hiện tại
+      clearIdemKey("verify", active.transactionId);
+      clearIdemKey("send", active.transactionId);
+
+      // Reset context sau khi thanh toán xong
+      setActive(null);
+      setOtpSent(false);
+      setOtpCode("");
+
       navigate("/transactions");
     } catch (err) {
       showNotification("" + (err.response?.data?.message || err.message), "error");
@@ -127,7 +176,6 @@ const Payment = () => {
 
   return (
     <div className={styles.paymentContainer}>
-      {/* ✅ Notification popup */}
       {notification.message && (
         <Notification
           message={notification.message}
@@ -137,7 +185,7 @@ const Payment = () => {
       )}
 
       <header className={styles.dd}>
-        <h1>💳 Tuition Payment</h1>
+        <h1> Tuition Payment</h1>
         <button onClick={() => navigate("/dashboard")} className={styles.backBtn}>
           ⬅ Back
         </button>
@@ -188,80 +236,78 @@ const Payment = () => {
               </tr>
             </thead>
             <tbody>
-              {tuitionInfo.tuitions.map((t) => (
-                <tr key={t._id}>
-                  <td>{t.semester}</td>
-                  <td>{formatMoney(t.amount)} VND</td>
-                  <td style={{ fontWeight: "600" }}>
-                    {isOverdue(t.deadline) ? (
-                      <span style={{ color: "red" }}>
-                        ⏰ Overdue ({formatDate(t.deadline)})
-                      </span>
-                    ) : (
-                      <span style={{ color: "lightcoral" }}>
-                        {formatDate(t.deadline)}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        color: t.status === "PAID" ? "lightgreen" : "orange",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {t.status}
-                    </span>
-                  </td>
-                  <td>
-                    {t.status === "PAID" ? (
-                      <span style={{ color: "lightgreen", fontWeight: "600" }}>
-                        ✅ Paid
-                      </span>
-                    ) : isOverdue(t.deadline) ? (
-                      <span style={{ color: "red", fontWeight: "600" }}>
-                        ❌ Overdue — cannot pay
-                      </span>
-                    ) : !transactionId ? (
-                      <button
-                        onClick={() => handleCreateTransaction(t._id)}
-                        className={styles.payBtn}
-                      >
-                        Create Transaction
-                      </button>
-                    ) : !otpSent ? (
-                      <button
-                        onClick={() => {
-                          if (t.status === "OTP_SENT") {
-                            showNotification("Transaction already processing, please wait", "warning");
-                          } else {
-                            handleSendOTP();
-                          }
+              {tuitionInfo.tuitions.map((t) => {
+                const isActive = active?.tuitionId === t._id; 
+                return (
+                  <tr key={t._id}>
+                    <td>{t.semester}</td>
+                    <td>{formatMoney(t.amount)} VND</td>
+                    <td style={{ fontWeight: "600" }}>
+                      {isOverdue(t.deadline) ? (
+                        <span style={{ color: "red" }}> Overdue ({formatDate(t.deadline)})</span>
+                      ) : (
+                        <span style={{ color: "lightcoral" }}>{formatDate(t.deadline)}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          color: t.status === "PAID" ? "lightgreen" : "orange",
+                          fontWeight: "600",
                         }}
-                        className={styles.payBtn}
                       >
-                        {t.status === "OTP_SENT" ? "Processing..." : "Send OTP"}
-                      </button>
-                    ) : (
-                      <div className={styles.otpBox}>
-                        <input
-                          type="text"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value)}
-                          placeholder="Enter OTP"
-                        />
+                        {t.status}
+                      </span>
+                    </td>
+                    <td>
+                      {t.status === "PAID" ? (
+                        <span style={{ color: "lightgreen", fontWeight: "600" }}> Paid</span>
+                      ) : isOverdue(t.deadline) ? (
+                        <span style={{ color: "red", fontWeight: "600" }}> Overdue — cannot pay</span>
+                      ) : !isActive ? (
+                        // 🔹 Chưa active dòng này → chỉ cho "Create Transaction"
                         <button
-                          onClick={handleConfirmPayment}
-                          disabled={!otpCode}
-                          className={styles.confirmBtn}
+                          onClick={() => handleCreateTransaction(t._id)}
+                          className={styles.payBtn}
                         >
-                          Confirm Payment
+                          Create Transaction
                         </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      ) : !otpSent ? (
+                        // 🔹 Đúng dòng active và chưa gửi OTP
+                        <button
+                          onClick={() => {
+                            if (t.status === "OTP_SENT") {
+                              showNotification("Transaction already processing, please wait", "warning");
+                            } else {
+                              handleSendOTP();
+                            }
+                          }}
+                          className={styles.payBtn}
+                        >
+                          {t.status === "OTP_SENT" ? "Processing..." : "Send OTP"}
+                        </button>
+                      ) : (
+                        // 🔹 Đúng dòng active và đã gửi OTP → hiển thị ô nhập OTP
+                        <div className={styles.otpBox}>
+                          <input
+                            type="text"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value)}
+                            placeholder="Enter OTP"
+                          />
+                          <button
+                            onClick={handleConfirmPayment}
+                            disabled={!otpCode}
+                            className={styles.confirmBtn}
+                          >
+                            Confirm Payment
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

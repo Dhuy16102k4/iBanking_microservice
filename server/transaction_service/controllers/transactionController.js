@@ -1,8 +1,8 @@
 const Transaction = require('../models/transaction')
 const axios = require('axios')
-const { 
-  sendOTP: sendOTPEmail, 
-  sendSuccessEmail 
+const {
+  sendOTP: sendOTPEmail,
+  sendSuccessEmail
 } = require('../utils/mailer')
 const mongoose = require('mongoose')
 const redis = require('redis')
@@ -56,9 +56,9 @@ async function getTuition(tuitionId) {
 
 
 async function deductUserBalance(userId, amount, transactionId) {
-  await axios.post(`http://gateway:4000/users/balance/deduct/${userId}`, { 
-      amountToDeduct: amount,
-      transactionId: transactionId 
+  await axios.post(`http://gateway:4000/users/balance/deduct/${userId}`, {
+    amountToDeduct: amount,
+    transactionId: transactionId
   });
 }
 
@@ -66,9 +66,9 @@ async function deductUserBalance(userId, amount, transactionId) {
 async function revertUserDeduction(userId, amount, transactionId) {
   console.error(`[SAGA_COMPENSATION] Reverting deduction for TxID: ${transactionId}. Amount: ${amount}`);
   try {
-    await axios.post(`http://gateway:4000/users/balance/credit/${userId}`, { 
+    await axios.post(`http://gateway:4000/users/balance/credit/${userId}`, {
       amountToCredit: amount,
-      transactionId: `COMPENSATION_FOR_${transactionId}` 
+      transactionId: `COMPENSATION_FOR_${transactionId}`
     });
     console.log(`[SAGA_COMPENSATION] Revert successful for TxID: ${transactionId}`);
   } catch (error) {
@@ -102,7 +102,7 @@ async function verifyOTP(transactionId, code) {
 
 class TransactionController {
   // B1: Khởi tạo giao dịch
- async createTransaction(req, res, next) {
+  async createTransaction(req, res, next) {
     const { tuitionId } = req.body;
     const userId = req.user.id;
 
@@ -111,7 +111,7 @@ class TransactionController {
       if (req.idempotencyResult) {
         return res.status(200).json(req.idempotencyResult);
       }
-      
+
       // 2. Lấy thông tin học phí (Tuition)
       let tuition;
       try {
@@ -124,7 +124,7 @@ class TransactionController {
       if (tuition.status !== 'UNPAID') {
         return res.status(400).json({ message: 'Tuition already paid' });
       }
-      
+
       // 4. Lấy tất cả hóa đơn CHƯA THANH TOÁN của sinh viên
       const allUnpaidTuitions = await getUnpaidTuitions(tuition.studentId);
 
@@ -135,21 +135,21 @@ class TransactionController {
         // 5. So sánh
         if (tuition._id.toString() !== earliestUnpaid._id.toString()) {
           // Báo lỗi ngay lập tức!
-          return res.status(400).json({ 
-            message: `Vui lòng thanh toán hóa đơn cũ nhất trước (Học kỳ: ${earliestUnpaid.semester}, Hạn: ${new Date(earliestUnpaid.deadline).toLocaleDateString()}).` 
+          return res.status(400).json({
+            message: `Vui lòng thanh toán hóa đơn cũ nhất trước (Học kỳ: ${earliestUnpaid.semester}, Hạn: ${new Date(earliestUnpaid.deadline).toLocaleDateString()}).`
           });
         }
       }
 
-      // 6. Kiểm tra giao dịch đang xử lý
-      const existingTrx = await Transaction.findOne({
-        tuitionId,
-        status: { $in: ['OTP_SENT', 'PENDING'] }
-      });
+      // // 6. Kiểm tra giao dịch đang xử lý
+      // const existingTrx = await Transaction.findOne({
+      //   tuitionId,
+      //   status: { $in: ['OTP_SENT', 'PENDING'] }
+      // });
 
-      if (existingTrx) {
-        return res.status(409).json({ message: 'Another transaction is already being processed for this tuition' });
-      }
+      // if (existingTrx) {
+      //   return res.status(409).json({ message: 'Another transaction is already being processed for this tuition' });
+      // }
 
       // 7. Tạo transaction
       const transaction = new Transaction({
@@ -193,7 +193,7 @@ class TransactionController {
 
     const { transactionId, token } = req.body
     const userId = req.user.id
-    
+
     try {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET)
@@ -205,7 +205,7 @@ class TransactionController {
         return res.status(404).json({ message: 'Transaction not found' })
       }
 
-      if (transaction.status !== 'INITIATED') {
+      if (transaction.status !== 'INITIATED' && transaction.status !== 'OTP_SENT') {
         return res.status(400).json({ message: 'Invalid status for OTP' })
       }
 
@@ -217,17 +217,22 @@ class TransactionController {
       transaction.otpId = otp.otpId
       await transaction.save()
 
-      res.json({
+      const result = {
         message: 'OTP sent',
         otpId: otp.otpId,
         transactionId,
         status: transaction.status
-      })
+      };
+      if (req.saveIdempotency) {
+        await req.saveIdempotency(result);
+      }
+
+      res.json(result)
     } catch (err) {
       res.status(400).json({ message: err.message })
     }
   }
-  
+
   // B3: Xác minh OTP + Thanh toán 
   async verifyOTP(req, res) {
     const { transactionId, code, token } = req.body;
@@ -236,9 +241,9 @@ class TransactionController {
     let lockKey;
 
     let balanceDeducted = false;
-    let amount = 0; 
+    let amount = 0;
     let userEmail = '';
-    let targetTuitionId = null; 
+    let targetTuitionId = null;
 
     try {
 
@@ -249,7 +254,7 @@ class TransactionController {
       // ===== 1. Lấy Transaction (NGOÀI session) =====
       const transaction = await Transaction.findById(transactionId);
       if (!transaction) throw new Error('Transaction not found');
-      
+
       // Lưu lại tuitionId để dùng trong SAGA
       targetTuitionId = transaction.tuitionId;
 
@@ -284,7 +289,7 @@ class TransactionController {
       // ===== 7. Check tuition status   =====
       const tuition = await getTuition(trx.tuitionId);
       if (tuition.status !== 'UNPAID') throw new Error('Tuition already paid');
-      
+
       // 7b. Lấy TẤT CẢ các hóa đơn CHƯA THANH TOÁN của sinh viên
       const allUnpaidTuitions = await getUnpaidTuitions(tuition.studentId);
 
@@ -302,14 +307,14 @@ class TransactionController {
 
       // ===== 8. Check user balance =====
       const user = await getUserInfo(userId);
-      amount = parseFloat(tuition.amount); 
-      userEmail = user.email; 
+      amount = parseFloat(tuition.amount);
+      userEmail = user.email;
       if (user.balance < amount) throw new Error('Insufficient balance');
 
       // 9. Trừ tiền
       try {
         await deductUserBalance(userId, amount, transactionId);
-        balanceDeducted = true; 
+        balanceDeducted = true;
       } catch (err) {
         const errorMessage = err.response?.data?.message || err.message;
         throw new Error(`Balance deduction failed: ${errorMessage}`);
@@ -317,7 +322,7 @@ class TransactionController {
 
       // ===== 10. Update tuition =====
       await updateTuition(trx.tuitionId, { status: 'PAID' });
-    
+
       // ===== 11. Mark transaction SUCCESS====
       trx.status = 'SUCCESS';
       await trx.save({ session });
@@ -368,7 +373,7 @@ class TransactionController {
     }
   }
 
-  
+
   async getTransactions(req, res) {
     const userId = req.user.id
     try {
@@ -378,7 +383,7 @@ class TransactionController {
       res.status(500).json({ message: err.message })
     }
   }
-  
+
   //Hủy transaction
   async cancelTransaction(req, res) {
     const { transactionId, token } = req.body
