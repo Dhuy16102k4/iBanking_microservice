@@ -8,7 +8,6 @@ const Transactions = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const navigate = useNavigate();
-
   const token = localStorage.getItem("accessToken");
 
   useEffect(() => {
@@ -17,16 +16,16 @@ const Transactions = () => {
         const res = await fetch("http://localhost:4000/transaction", {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         let data = await res.json();
         if (!res.ok)
           throw new Error(data.message || "Failed to fetch transactions");
 
-        // 🔄 Sắp xếp mới nhất lên trước
+        // 🔄 Sort newest first
         data = data.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
 
-        // ✅ enrich thêm MSSV + Amount + Semester từ tuition service
         const enriched = await Promise.all(
           data.map(async (tx) => {
             try {
@@ -58,7 +57,7 @@ const Transactions = () => {
     fetchTransactions();
   }, [token]);
 
-  // 📌 Phân trang
+  // 📌 Pagination logic
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentTransactions = transactions.slice(indexOfFirst, indexOfLast);
@@ -68,7 +67,7 @@ const Transactions = () => {
     <div className={styles.dashboardContainer}>
       {/* Header */}
       <header className={styles.header}>
-        <h1>📄 Transactions</h1>
+        <h1>Transactions</h1>
         <button
           onClick={() => navigate("/dashboard")}
           className={styles.logoutBtn}
@@ -77,24 +76,24 @@ const Transactions = () => {
         </button>
       </header>
 
-      {/* Content */}
+      {/* Main Content */}
       <main className={styles.content}>
         {loading ? (
-          <p>⏳ Đang tải dữ liệu...</p>
+          <p>Loading data...</p>
         ) : transactions.length === 0 ? (
-          <p>😢 Chưa có giao dịch nào</p>
+          <p>No transactions found</p>
         ) : (
           <>
             <div className={styles.tableWrapper}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>STT</th>
-                    <th>MSSV</th>
+                    <th>No.</th>
+                    <th>Student ID</th>
                     <th>Semester</th>
                     <th>Amount (VND)</th>
                     <th>Status</th>
-                    <th>Thời gian</th>
+                    <th>Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>

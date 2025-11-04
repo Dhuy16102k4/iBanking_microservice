@@ -30,7 +30,7 @@ const Login = () => {
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
 
-      showToast("✅ Login successful!", "success");
+      showToast("Login successful!", "success");
 
       // điều hướng sang dashboard
       setTimeout(() => {
@@ -39,7 +39,7 @@ const Login = () => {
     } catch (err) {
       // axios lỗi -> err.response.data có message BE trả về
       const msg =
-        err.response?.data?.message || "❌ Error: " + err.message;
+        err.response?.data?.message || "Error: " + err.message;
       showToast(msg, "error");
     } finally {
       setLoading(false);

@@ -17,7 +17,7 @@ class TuitionController {
       res.status(400).json({ message: err.message })
     }
   }
-
+ 
   async getStudentWithTuition(req, res) {
     try {
       const { studentId } = req.params;
@@ -74,6 +74,20 @@ class TuitionController {
       res.status(500).json({ message: err.message })
     }
   }
+  async getUnpaidTuitionsByStudent(req, res) {
+    try {
+      const { studentId } = req.params;
+      const tuitions = await Tuition.find({ 
+        studentId: studentId, 
+        status: 'UNPAID' 
+      }).sort({ deadline: 1 }); 
+      
+      res.json(tuitions);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+  
 }
 
 module.exports = new TuitionController()

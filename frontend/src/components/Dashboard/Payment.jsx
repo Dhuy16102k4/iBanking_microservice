@@ -9,7 +9,7 @@ const Payment = () => {
   const [tuitionInfo, setTuitionInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
-  const [transactionToken, setTransactionToken] = useState(null); // ✅ lưu transaction token
+  const [transactionToken, setTransactionToken] = useState(null); // ✅ save transaction token
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [notification, setNotification] = useState({ message: "", type: "" });
@@ -23,12 +23,12 @@ const Payment = () => {
   };
 
   const formatMoney = (num) =>
-    Number(num).toLocaleString("vi-VN", { minimumFractionDigits: 0 });
+    Number(num).toLocaleString("en-US", { minimumFractionDigits: 0 });
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("vi-VN", {
+    return d.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -39,10 +39,10 @@ const Payment = () => {
     if (!dateStr) return false;
     const now = new Date();
     const deadline = new Date(dateStr);
-    return deadline < now; // true nếu quá hạn
+    return deadline < now; // return true if overdue
   };
 
-  // 🔎 Tra cứu học phí
+  // 🔎 Fetch tuition info
   const handleFetchTuition = async () => {
     if (!studentId) return;
     setLoading(true);
@@ -53,7 +53,7 @@ const Payment = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTuitionInfo(data);
-      showNotification("✅ Tra cứu học phí thành công", "success");
+      showNotification("Tuition information retrieved successfully", "success");
     } catch (err) {
       showNotification(
         "❌ " + (err.response?.data?.message || err.message),
@@ -64,7 +64,7 @@ const Payment = () => {
     }
   };
 
-  // 🏦 B1: Tạo transaction
+  // 🏦 Step 1: Create transaction
   const handleCreateTransaction = async (tuitionId) => {
     try {
       const { data } = await axios.post(
@@ -73,8 +73,8 @@ const Payment = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTransactionId(data.transactionId);
-      setTransactionToken(data.token); // ✅ lưu transaction token
-      showNotification("✅ Giao dịch đã được khởi tạo", "success");
+      setTransactionToken(data.token); // ✅ save transaction token
+      showNotification("Transaction initialized successfully", "success");
     } catch (err) {
       showNotification(
         "❌ " + (err.response?.data?.message || err.message),
@@ -83,59 +83,51 @@ const Payment = () => {
     }
   };
 
-  // ✉️ B2: Gửi OTP
+  // ✉️ Step 2: Send OTP
   const handleSendOTP = async () => {
     if (!transactionId || !transactionToken)
-      return showNotification("⚠️ Bạn cần tạo giao dịch trước", "warning");
+      return showNotification("Please create a transaction first", "warning");
     try {
       const { data } = await axios.post(
         "http://localhost:4000/transaction/send",
-        { transactionId, token: transactionToken }, // ✅ gửi transaction token
+        { transactionId, token: transactionToken },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setOtpSent(true);
       showNotification("✅ " + data.message, "success");
     } catch (err) {
-      showNotification(
-        "❌ " + (err.response?.data?.message || err.message),
-        "error"
-      );
+      showNotification("" + (err.response?.data?.message || err.message), "error");
     }
   };
 
+  // 🔐 Step 3: Verify OTP + Payment
+  const handleConfirmPayment = async () => {
+    if (!transactionId || !transactionToken)
+      return showNotification("No transaction available for confirmation", "warning");
 
-// 🔐 B3: Xác thực OTP + Thanh toán
-const handleConfirmPayment = async () => {
-  if (!transactionId || !transactionToken)
-    return showNotification("⚠️ Chưa có giao dịch để xác thực", "warning");
+    try {
+      const { data } = await axios.post(
+        "http://localhost:4000/transaction/verify",
+        { transactionId, code: otpCode, token: transactionToken },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
 
-  try {
-    const { data } = await axios.post(
-      "http://localhost:4000/transaction/verify",
-      { transactionId, code: otpCode, token: transactionToken },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
+            "Idempotency-Key": transactionId, // ✅ ensures no duplicate payments
+          },
+        }
+      );
 
-          "Idempotency-Key": transactionId, 
-        },
-      }
-    );
-
-    showNotification("🎉 " + data.message, "success");
-    navigate("/transactions");
-  } catch (err) {
-    showNotification(
-      "❌ " + (err.response?.data?.message || err.message),
-      "error"
-    );
-  }
-};
-
+      showNotification("🎉 " + data.message, "success");
+      navigate("/transactions");
+    } catch (err) {
+      showNotification("" + (err.response?.data?.message || err.message), "error");
+    }
+  };
 
   return (
     <div className={styles.paymentContainer}>
-      {/* ✅ Popup */}
+      {/* ✅ Notification popup */}
       {notification.message && (
         <Notification
           message={notification.message}
@@ -146,34 +138,31 @@ const handleConfirmPayment = async () => {
 
       <header className={styles.dd}>
         <h1>💳 Tuition Payment</h1>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className={styles.backBtn}
-        >
+        <button onClick={() => navigate("/dashboard")} className={styles.backBtn}>
           ⬅ Back
         </button>
       </header>
 
       <div className={styles.formGroup}>
-        <label>Student ID (MSSV)</label>
+        <label>Student ID</label>
         <input
           type="text"
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
-          placeholder="Nhập MSSV (vd: 522H0038)"
+          placeholder="Enter Student ID (e.g., 522H0038)"
         />
         <button onClick={handleFetchTuition} disabled={loading}>
-          {loading ? "Đang tra cứu..." : "Tra cứu học phí"}
+          {loading ? "Fetching..." : "Search Tuition"}
         </button>
       </div>
 
       {tuitionInfo?.student && (
         <div className={styles.tuitionBox}>
-          <h3>Thông tin sinh viên</h3>
+          <h3>Student Information</h3>
           <table className={styles.studentTable}>
             <tbody>
               <tr>
-                <th>Tên</th>
+                <th>Full Name</th>
                 <td>{tuitionInfo.student.fullName}</td>
               </tr>
               <tr>
@@ -187,7 +176,7 @@ const handleConfirmPayment = async () => {
             </tbody>
           </table>
 
-          <h3>Học phí</h3>
+          <h3>Tuition Details</h3>
           <table className={styles.tuitionTable}>
             <thead>
               <tr>
@@ -206,7 +195,7 @@ const handleConfirmPayment = async () => {
                   <td style={{ fontWeight: "600" }}>
                     {isOverdue(t.deadline) ? (
                       <span style={{ color: "red" }}>
-                        ⏰ Quá hạn ({formatDate(t.deadline)})
+                        ⏰ Overdue ({formatDate(t.deadline)})
                       </span>
                     ) : (
                       <span style={{ color: "lightcoral" }}>
@@ -225,53 +214,52 @@ const handleConfirmPayment = async () => {
                     </span>
                   </td>
                   <td>
-  {t.status === "PAID" ? (
-    <span style={{ color: "lightgreen", fontWeight: "600" }}>
-      ✅ Đã thanh toán
-    </span>
-  ) : isOverdue(t.deadline) ? (
-    <span style={{ color: "red", fontWeight: "600" }}>
-      ❌ Quá hạn, không thể thanh toán
-    </span>
-  ) : !transactionId ? (
-    <button
-      onClick={() => handleCreateTransaction(t._id)}
-      className={styles.payBtn}
-    >
-      Tạo giao dịch
-    </button>
-  ) : !otpSent ? (
-    <button
-      onClick={() => {
-        if (t.status === "OTP_SENT") {
-          showNotification("⚠️ Giao dịch đang được thực hiện, vui lòng đợi", "warning");
-        } else {
-          handleSendOTP();
-        }
-      }}
-      className={styles.payBtn}
-    >
-      {t.status === "OTP_SENT" ? "Đang xử lý..." : "Gửi OTP"}
-    </button>
-  ) : (
-    <div className={styles.otpBox}>
-      <input
-        type="text"
-        value={otpCode}
-        onChange={(e) => setOtpCode(e.target.value)}
-        placeholder="Nhập OTP"
-      />
-      <button
-        onClick={handleConfirmPayment}
-        disabled={!otpCode}
-        className={styles.confirmBtn}
-      >
-        Xác nhận
-      </button>
-    </div>
-  )}
-</td>
-
+                    {t.status === "PAID" ? (
+                      <span style={{ color: "lightgreen", fontWeight: "600" }}>
+                        ✅ Paid
+                      </span>
+                    ) : isOverdue(t.deadline) ? (
+                      <span style={{ color: "red", fontWeight: "600" }}>
+                        ❌ Overdue — cannot pay
+                      </span>
+                    ) : !transactionId ? (
+                      <button
+                        onClick={() => handleCreateTransaction(t._id)}
+                        className={styles.payBtn}
+                      >
+                        Create Transaction
+                      </button>
+                    ) : !otpSent ? (
+                      <button
+                        onClick={() => {
+                          if (t.status === "OTP_SENT") {
+                            showNotification("Transaction already processing, please wait", "warning");
+                          } else {
+                            handleSendOTP();
+                          }
+                        }}
+                        className={styles.payBtn}
+                      >
+                        {t.status === "OTP_SENT" ? "Processing..." : "Send OTP"}
+                      </button>
+                    ) : (
+                      <div className={styles.otpBox}>
+                        <input
+                          type="text"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          placeholder="Enter OTP"
+                        />
+                        <button
+                          onClick={handleConfirmPayment}
+                          disabled={!otpCode}
+                          className={styles.confirmBtn}
+                        >
+                          Confirm Payment
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

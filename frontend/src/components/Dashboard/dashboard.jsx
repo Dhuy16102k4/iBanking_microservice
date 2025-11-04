@@ -23,6 +23,7 @@ const Dashboard = () => {
         const res = await fetch("http://localhost:4000/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to fetch profile");
 
@@ -30,7 +31,7 @@ const Dashboard = () => {
         localStorage.setItem("fullName", data.fullName);
         localStorage.setItem("username", data.username);
       } catch (err) {
-        console.error("Profile fetch error:", err.message);
+        console.error("Failed to fetch profile:", err.message);
         localStorage.clear();
         navigate("/login");
       }
@@ -42,12 +43,13 @@ const Dashboard = () => {
   return (
     <div className={styles.dashboardContainer}>
       <header className={styles.header}>
-        <h1>🎓 Student Dashboard</h1>
+        <h1>Student Dashboard</h1>
 
         <div className={styles.rightSection}>
           <span className={styles.greeting}>
-            Xin chào, <b>{name}</b>
+            Hello, <b>{name}</b>
           </span>
+
           <button className={styles.logoutBtn} onClick={handleLogout}>
             Logout
           </button>
@@ -57,15 +59,12 @@ const Dashboard = () => {
       <main className={styles.content}>
         <div className={styles.hero}>
           <h2>Welcome back!</h2>
-          <p>Manage your tuition payments and student services with ease.</p>
+          <p>Manage your tuition payments and student services easily.</p>
         </div>
 
         <div className={styles.semesterBox}>
-          <h3>📚 Current Semester</h3>
+          <h3>Current Semester</h3>
           <p>1st Semester / 2025 - 2026</p>
-          <span className={styles.notice}>
-            ⚠️ Deadline for tuition payment: 30/10/2025
-          </span>
         </div>
 
         <div className={styles.cards}>
@@ -75,16 +74,19 @@ const Dashboard = () => {
             <p>Quickly settle your tuition fees online.</p>
           </div>
 
-          <div className={styles.card} onClick={() => navigate("/transactions")}>
+          <div
+            className={styles.card}
+            onClick={() => navigate("/transactions")}
+          >
             <span className={styles.icon}>📄</span>
             <h4>Transactions</h4>
-            <p>View your past payment history.</p>
+            <p>View your payment history.</p>
           </div>
 
           <div className={styles.card} onClick={() => navigate("/profile")}>
             <span className={styles.icon}>👤</span>
             <h4>Profile</h4>
-            <p>View your profile details.</p>
+            <p>View and manage your personal details.</p>
           </div>
         </div>
       </main>
@@ -92,4 +94,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

@@ -1,0 +1,281 @@
+{
+	"info": {
+		"_postman_id": "296c3988-7e2b-4f2e-a29f-94d7832ad447",
+		"name": "Ibanking",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39487925"
+	},
+	"item": [
+		{
+			"name": "New Request",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "DucHuy16102k4",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "123456",
+							"type": "text"
+						},
+						{
+							"key": "fullName",
+							"value": "NguyenDucHuy",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "phone",
+							"value": "1943739016",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "email",
+							"value": "duchuy16102k4@gmail.com",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:4000/auth/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "New Request",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:4000/users/profile",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZDQzZGIxYmM4MjBmMjA5YTE2ZWI1NCIsInVzZXJuYW1lIjoiRHVjIEh1eTEiLCJpYXQiOjE3NTg5NjgwMzEsImV4cCI6MTc1ODk2ODkzMX0.7U773hBUcjYI8ZIUjCfEEMSmURoo4tdDTneYg_0_T9c",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "refreshToken",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4Y2Q5NDE4OWFlMTI0ZDBjZDg4MWJkYSIsInVzZXJuYW1lIjoiTmdhIFBoYW0iLCJpYXQiOjE3NTgzNTk4NTEsImV4cCI6MTc1ODk2NDY1MX0.RiZhkENsAobe857qoA45Q88B8jlxkM8C-qo4wKnmPDg",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "studentId",
+							"value": "S002",
+							"type": "text"
+						},
+						{
+							"key": "fullName",
+							"value": "Ngo Duc Huy",
+							"type": "text"
+						},
+						{
+							"key": "email",
+							"value": "nguyenvana1@example.com",
+							"type": "text"
+						},
+						{
+							"key": "phone",
+							"value": "0123456783",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:4000/users/profile",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:4000/tuition/student/S002",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": []
+				},
+				"url": {
+					"raw": "http://localhost:4000/tuition/student/S003",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"tuition",
+						"student",
+						"S003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:4000/student/",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/student/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"student",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:4000/transaction/verify",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZmM5MDhiZTNhOTdmZjExOGRkNTVkZiIsInVzZXJuYW1lIjoiRHVjSHV5MTYxMDJrNCIsImlhdCI6MTc2MTQ3MjEwMiwiZXhwIjoxNzYxNDczMDAyfQ.DzlwxPk9oJDm2vXETHVdAynguQwCrSPg-FsZwa730mY",
+						"type": "text"
+					},
+					{
+						"key": "idempotency-key",
+						"value": "my-unique-key-123",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"transactionId\": \"68fdec2e9d8bf728539c6da2\",\r\n    \"code\": \"255187\",\r\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0cmFuc2FjdGlvbklkIjoiNjhmZGVjMmU5ZDhiZjcyODUzOWM2ZGEyIiwidXNlcklkIjoiNjhmYzkwOGJlM2E5N2ZmMTE4ZGQ1NWRmIiwiaWF0IjoxNzYxNDcxNTM0LCJleHAiOjE3NjE0NzMzMzR9.qzYPCKIrlaLyqWpyzwQ8UmC01Kk5QvDQnOJT128FjFg\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:4000/transaction/verify",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"transaction",
+						"verify"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:4000/transaction/send",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZmM5MDhiZTNhOTdmZjExOGRkNTVkZiIsInVzZXJuYW1lIjoiRHVjSHV5MTYxMDJrNCIsImlhdCI6MTc2MTk5OTkxNSwiZXhwIjoxNzYyMDAwODE1fQ.PMvwSTc8fFFVU9aI_eE5MpZQhyIVnskUPNy-s9n_oD0",
+						"type": "text"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "ok",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "transactionId",
+							"value": "6905fdcdceeb3ca9c0d10ca4",
+							"type": "text"
+						},
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0cmFuc2FjdGlvbklkIjoiNjkwNWZkY2RjZWViM2NhOWMwZDEwY2E0IiwidXNlcklkIjoiNjhmYzkwOGJlM2E5N2ZmMTE4ZGQ1NWRmIiwiaWF0IjoxNzYyMDAwMzMzLCJleHAiOjE3NjIwMDIxMzN9.O5R3TpkOVQA6n97cVSVm1NcKTHR3iNofmBwS9lg4Grg",
+							"type": "text"
+						},
+						{
+							"key": "tuitionId",
+							"value": "68fc9a8d91365c85ed34318b",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "code",
+							"value": "637693",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:4000/transaction/verify",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"transaction",
+						"verify"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

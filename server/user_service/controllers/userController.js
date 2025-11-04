@@ -42,14 +42,13 @@ class UserController {
   // ko can 
   async updateBalance(req, res) {
     try {
-      // --- BẮT ĐẦU DEBUG ---
-      console.log('--- [DEBUG] BẮT ĐẦU updateBalance ---');
+
       console.log('Toàn bộ req.body:', JSON.stringify(req.body));
 
       const { amount } = req.body;
       console.log('Giá trị "amount" nhận được:', amount);
       console.log('Kiểu dữ liệu của "amount":', typeof amount);
-      // --- KẾT THÚC DEBUG ---
+ 
 
       const amountToAdd = parseFloat(amount);
 

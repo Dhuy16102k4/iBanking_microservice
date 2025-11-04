@@ -15,6 +15,7 @@ router.get('/id/:id', tuitionController.getTuitionById)
 
 router.delete('/:id', tuitionController.deleteTuition)
 
+router.get('/unpaid/:studentId',tuitionController.getUnpaidTuitionsByStudent)
 
 router.patch('/:tuitionId', tuitionController.updateTuition)
 

@@ -12,7 +12,7 @@ const Profile = () => {
       try {
         const token = localStorage.getItem("accessToken");
         if (!token) {
-          console.warn("⚠️ No token found, redirect to login");
+          console.warn("No token found, redirecting to login.");
           navigate("/login");
           return;
         }
@@ -25,9 +25,10 @@ const Profile = () => {
 
         setProfile(res.data);
       } catch (err) {
-        console.error("Profile fetch error:", err.response?.data || err.message);
+        console.error("Failed to fetch profile:", err.response?.data || err.message);
+
+        // Expired / invalid token -> force logout
         if (err.response?.status === 401 || err.response?.status === 403) {
-          // token hết hạn hoặc không hợp lệ → logout
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           navigate("/login");
@@ -41,7 +42,7 @@ const Profile = () => {
   return (
     <div className={styles.profileContainer}>
       <header className={styles.hh}>
-        <h1>👤 Profile</h1>
+        <h1>Profile</h1>
         <button className={styles.backBtn} onClick={() => navigate("/dashboard")}>
           ⬅ Back
         </button>
@@ -50,24 +51,31 @@ const Profile = () => {
       <main className={styles.content}>
         {profile ? (
           <div className={styles.profileCard}>
-            <h2>Student Information</h2>
+            <h2>Account Information</h2>
+
             <div className={styles.infoRow}>
-              <span>Username:</span> <span>{profile.username}</span>
+              <span>Username:</span>
+              <span>{profile.username}</span>
             </div>
+
             <div className={styles.infoRow}>
-              <span>Full Name:</span> <span>{profile.fullName}</span>
+              <span>Full Name:</span>
+              <span>{profile.fullName}</span>
             </div>
+
             <div className={styles.infoRow}>
-              <span>Email:</span> <span>{profile.email}</span>
+              <span>Email:</span>
+              <span>{profile.email}</span>
             </div>
+
             <div className={styles.infoRow}>
-              <span>Phone:</span> <span>{profile.phone}</span>
+              <span>Phone:</span>
+              <span>{profile.phone}</span>
             </div>
+
             <div className={styles.infoRow}>
-              <span>Balance:</span>{" "}
-              <span>
-                {profile.balance.toLocaleString("vi-VN")} VND
-              </span>
+              <span>Balance:</span>
+              <span>{profile.balance.toLocaleString("vi-VN")} VND</span>
             </div>
           </div>
         ) : (
